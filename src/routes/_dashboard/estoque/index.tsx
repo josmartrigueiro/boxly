@@ -7,7 +7,7 @@ import { ProductsTable } from "@/components/products/products-table";
 import { Button } from "@/components/ui/button";
 import { getStockStatus, MOCK_PRODUCTS } from "@/lib/mock-products";
 
-export const Route = createFileRoute("/_dashboard/estoque")({
+export const Route = createFileRoute("/_dashboard/estoque/")({
 	component: EstoquePage,
 });
 

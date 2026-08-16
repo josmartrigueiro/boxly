@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Package, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -156,12 +157,14 @@ export function ProductsTable() {
 									return (
 										<TableRow key={product.id}>
 											<TableCell className="font-medium">
-												<div
-													className="max-w-[200px] truncate"
+												<Link
+													to="/estoque/$productId"
+													params={{ productId: product.id }}
+													className="block max-w-[200px] truncate text-foreground hover:text-primary hover:underline"
 													title={product.name}
 												>
 													{product.name}
-												</div>
+												</Link>
 												<div className="font-mono text-xs text-muted-foreground">
 													{product.id}
 												</div>
