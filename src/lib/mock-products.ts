@@ -10,11 +10,12 @@ export type Product = {
 
 export type StockStatus = "esgotado" | "baixo" | "em_estoque";
 
-export const LOW_STOCK_THRESHOLD = 5;
-
-export function getStockStatus(quantity: number): StockStatus {
+export function getStockStatus(
+	quantity: number,
+	lowStockThreshold: number,
+): StockStatus {
 	if (quantity <= 0) return "esgotado";
-	if (quantity <= LOW_STOCK_THRESHOLD) return "baixo";
+	if (quantity <= lowStockThreshold) return "baixo";
 	return "em_estoque";
 }
 

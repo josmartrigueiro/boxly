@@ -1,8 +1,10 @@
 import { Badge } from "@/components/ui/badge";
+import { useLowStockThreshold } from "@/hooks/use-low-stock-threshold";
 import { getStockStatus } from "@/lib/mock-products";
 
 export function ProductStatusBadge({ quantity }: { quantity: number }) {
-	const status = getStockStatus(quantity);
+	const { threshold } = useLowStockThreshold();
+	const status = getStockStatus(quantity, threshold);
 
 	if (status === "esgotado") {
 		return <Badge variant="destructive">Esgotado</Badge>;

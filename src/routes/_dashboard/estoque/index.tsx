@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { MetricCard } from "@/components/metric-card";
 import { ProductsTable } from "@/components/products/products-table";
 import { Button } from "@/components/ui/button";
+import { useLowStockThreshold } from "@/hooks/use-low-stock-threshold";
 import { getStockStatus, MOCK_PRODUCTS } from "@/lib/mock-products";
 
 export const Route = createFileRoute("/_dashboard/estoque/")({
@@ -17,12 +18,13 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 });
 
 function EstoquePage() {
+	const { threshold } = useLowStockThreshold();
 	const total = MOCK_PRODUCTS.length;
 	const baixo = MOCK_PRODUCTS.filter(
-		(product) => getStockStatus(product.quantity) === "baixo",
+		(product) => getStockStatus(product.quantity, threshold) === "baixo",
 	).length;
 	const esgotado = MOCK_PRODUCTS.filter(
-		(product) => getStockStatus(product.quantity) === "esgotado",
+		(product) => getStockStatus(product.quantity, threshold) === "esgotado",
 	).length;
 	const valorEmEstoque = MOCK_PRODUCTS.reduce(
 		(total, product) => total + product.quantity * product.unitCost,
