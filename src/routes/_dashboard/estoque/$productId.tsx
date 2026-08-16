@@ -1,12 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Package } from "lucide-react";
+import { ArrowLeft, History, Package } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
 import { ProductStatusBadge } from "@/components/products/product-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getLotById } from "@/lib/mock-inventory";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import {
+	getLotById,
+	getMovementsForProduct,
+	type StockMovementType,
+} from "@/lib/mock-inventory";
 import { getMargin, MOCK_PRODUCTS } from "@/lib/mock-products";
+
+const MOVEMENT_LABELS: Record<
+	StockMovementType,
+	{ label: string; variant: "secondary" | "warning" | "outline" }
+> = {
+	entrada: { label: "Entrada", variant: "secondary" },
+	saida: { label: "Saída", variant: "outline" },
+	ajuste: { label: "Ajuste", variant: "warning" },
+};
 
 export const Route = createFileRoute("/_dashboard/estoque/$productId")({
 	component: ProductDetailPage,
@@ -43,6 +64,7 @@ function ProductDetailPage() {
 	const lot = getLotById(product.lotId);
 	const margin = getMargin(product.unitCost, product.salePrice);
 	const profit = product.salePrice - product.unitCost;
+	const movements = getMovementsForProduct(product);
 
 	return (
 		<>
@@ -177,6 +199,61 @@ function ProductDetailPage() {
 						</CardContent>
 					</Card>
 				</div>
+
+				<Card className="shadow-xs">
+					<CardHeader>
+						<div className="flex items-center gap-2">
+							<span className="rounded-md border border-border/60 p-1.5">
+								<History className="size-4 text-muted-foreground" />
+							</span>
+							<CardTitle className="text-sm font-medium text-muted-foreground">
+								Movimentações
+							</CardTitle>
+						</div>
+					</CardHeader>
+					<CardContent>
+						<div className="overflow-hidden rounded-lg border border-border/60">
+							<Table>
+								<TableHeader>
+									<TableRow className="bg-primary/5">
+										<TableHead className="tracking-wide">Data</TableHead>
+										<TableHead className="tracking-wide">Tipo</TableHead>
+										<TableHead className="tracking-wide">Motivo</TableHead>
+										<TableHead className="text-end tracking-wide">
+											Quantidade
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{movements.map((movement) => {
+										const config = MOVEMENT_LABELS[movement.type];
+										const signedQuantity =
+											movement.type === "entrada"
+												? `+${movement.quantity}`
+												: `-${movement.quantity}`;
+
+										return (
+											<TableRow key={movement.id}>
+												<TableCell className="font-mono text-sm text-muted-foreground">
+													{movement.date}
+												</TableCell>
+												<TableCell>
+													<Badge variant={config.variant}>{config.label}</Badge>
+												</TableCell>
+												<TableCell className="text-sm text-muted-foreground">
+													{movement.reason}
+												</TableCell>
+												<TableCell className="text-end font-mono text-sm font-semibold tabular-nums text-foreground">
+													{signedQuantity}
+												</TableCell>
+											</TableRow>
+										);
+									})}
+								</TableBody>
+							</Table>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 		</>
 	);
