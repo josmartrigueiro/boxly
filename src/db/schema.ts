@@ -1,5 +1,15 @@
 import { relations } from "drizzle-orm";
-import { boolean, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+	boolean,
+	integer,
+	numeric,
+	pgEnum,
+	pgTable,
+	serial,
+	text,
+	timestamp,
+	uuid,
+} from "drizzle-orm/pg-core";
 
 export const todos = pgTable("todos", {
 	id: serial().primaryKey(),
@@ -80,4 +90,69 @@ export const sessionRelations = relations(session, ({ one }) => ({
 
 export const accountRelations = relations(account, ({ one }) => ({
 	user: one(user, { fields: [account.userId], references: [user.id] }),
+}));
+
+export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
+	"pending",
+	"in_transit",
+	"received",
+	"cancelled",
+]);
+
+export const suppliers = pgTable("suppliers", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	name: text("name").notNull(),
+	platform: text("platform"),
+	location: text("location"),
+	phone: text("phone"),
+	notes: text("notes"),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at")
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+});
+
+export const purchaseOrders = pgTable("purchase_orders", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	supplierId: uuid("supplier_id")
+		.notNull()
+		.references(() => suppliers.id, { onDelete: "restrict" }),
+	orderDate: timestamp("order_date").notNull(),
+	itemsCount: integer("items_count").notNull().default(0),
+	productsValue: numeric("products_value", {
+		precision: 10,
+		scale: 2,
+	}).notNull(),
+	freightValue: numeric("freight_value", { precision: 10, scale: 2 })
+		.notNull()
+		.default("0"),
+	taxValue: numeric("tax_value", { precision: 10, scale: 2 })
+		.notNull()
+		.default("0"),
+	status: purchaseOrderStatusEnum("status").notNull().default("pending"),
+	notes: text("notes"),
+	createdById: text("created_by_id").references(() => user.id, {
+		onDelete: "set null",
+	}),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at")
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+});
+
+export const supplierRelations = relations(suppliers, ({ many }) => ({
+	purchaseOrders: many(purchaseOrders),
+}));
+
+export const purchaseOrderRelations = relations(purchaseOrders, ({ one }) => ({
+	supplier: one(suppliers, {
+		fields: [purchaseOrders.supplierId],
+		references: [suppliers.id],
+	}),
+	createdBy: one(user, {
+		fields: [purchaseOrders.createdById],
+		references: [user.id],
+	}),
 }));
