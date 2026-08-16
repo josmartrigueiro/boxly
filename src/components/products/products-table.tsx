@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -33,6 +40,11 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 const CATEGORIES = Array.from(
 	new Set(MOCK_PRODUCTS.map((product) => product.category)),
 ).sort((a, b) => a.localeCompare(b));
+
+const CATEGORY_OPTIONS = [
+	{ value: "all", label: "Todas as linhas" },
+	...CATEGORIES.map((category) => ({ value: category, label: category })),
+];
 
 export function ProductsTable() {
 	const [search, setSearch] = useState("");
@@ -96,18 +108,22 @@ export function ProductsTable() {
 							className="w-[240px] pl-8"
 						/>
 					</div>
-					<select
+					<Select
+						items={CATEGORY_OPTIONS}
 						value={category}
-						onChange={(event) => handleCategoryChange(event.target.value)}
-						className="h-8 rounded-sm border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+						onValueChange={(value) => handleCategoryChange(value as string)}
 					>
-						<option value="all">Todas as linhas</option>
-						{CATEGORIES.map((value) => (
-							<option key={value} value={value}>
-								{value}
-							</option>
-						))}
-					</select>
+						<SelectTrigger className="w-[180px]">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{CATEGORY_OPTIONS.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</CardAction>
 			</CardHeader>
 
@@ -158,7 +174,7 @@ export function ProductsTable() {
 										<TableRow key={product.id}>
 											<TableCell className="font-medium">
 												<Link
-													to="/estoque/$productId"
+													to="/inventory/$productId"
 													params={{ productId: product.id }}
 													className="block max-w-[200px] truncate text-foreground hover:text-primary hover:underline"
 													title={product.name}

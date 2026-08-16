@@ -19,8 +19,8 @@ import { sessionQueryKey } from "@/lib/auth-functions";
 
 const NAV_ITEMS = [
 	{ to: "/", label: "Dashboard", icon: LayoutDashboard },
-	{ to: "/estoque", label: "Estoque", icon: Package },
-	{ to: "/configuracoes", label: "Configurações", icon: Settings },
+	{ to: "/inventory", label: "Estoque", icon: Package },
+	{ to: "/settings", label: "Configurações", icon: Settings },
 ] as const;
 
 function getInitials(name: string) {

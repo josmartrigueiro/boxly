@@ -29,7 +29,7 @@ const MOVEMENT_LABELS: Record<
 	ajuste: { label: "Ajuste", variant: "warning" },
 };
 
-export const Route = createFileRoute("/_dashboard/estoque/$productId")({
+export const Route = createFileRoute("/_dashboard/inventory/$productId")({
 	component: ProductDetailPage,
 });
 
@@ -51,7 +51,7 @@ function ProductDetailPage() {
 						Não encontramos nenhum produto com o código "{productId}".
 					</p>
 					<Link
-						to="/estoque"
+						to="/inventory"
 						className="text-sm font-medium text-primary hover:underline"
 					>
 						Voltar para o estoque
@@ -72,7 +72,7 @@ function ProductDetailPage() {
 
 			<div className="w-full flex-1 space-y-6 overflow-y-auto p-4">
 				<Link
-					to="/estoque"
+					to="/inventory"
 					className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
 				>
 					<ArrowLeft className="size-4" />

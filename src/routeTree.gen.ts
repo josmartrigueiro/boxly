@@ -12,10 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as DashboardIndexRouteImport } from './routes/_dashboard/index'
-import { Route as DashboardConfiguracoesRouteImport } from './routes/_dashboard/configuracoes'
-import { Route as DashboardEstoqueIndexRouteImport } from './routes/_dashboard/estoque/index'
+import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
+import { Route as DashboardInventoryIndexRouteImport } from './routes/_dashboard/inventory/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as DashboardEstoqueProductIdRouteImport } from './routes/_dashboard/estoque/$productId'
+import { Route as DashboardInventoryProductIdRouteImport } from './routes/_dashboard/inventory/$productId'
 
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
@@ -31,14 +31,14 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardConfiguracoesRoute = DashboardConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardEstoqueIndexRoute = DashboardEstoqueIndexRouteImport.update({
-  id: '/estoque/',
-  path: '/estoque/',
+const DashboardInventoryIndexRoute = DashboardInventoryIndexRouteImport.update({
+  id: '/inventory/',
+  path: '/inventory/',
   getParentRoute: () => DashboardRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -46,65 +46,65 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardEstoqueProductIdRoute =
-  DashboardEstoqueProductIdRouteImport.update({
-    id: '/estoque/$productId',
-    path: '/estoque/$productId',
+const DashboardInventoryProductIdRoute =
+  DashboardInventoryProductIdRouteImport.update({
+    id: '/inventory/$productId',
+    path: '/inventory/$productId',
     getParentRoute: () => DashboardRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof DashboardIndexRoute
   '/sign-in': typeof SignInRoute
-  '/configuracoes': typeof DashboardConfiguracoesRoute
-  '/estoque/$productId': typeof DashboardEstoqueProductIdRoute
+  '/settings': typeof DashboardSettingsRoute
+  '/inventory/$productId': typeof DashboardInventoryProductIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/estoque/': typeof DashboardEstoqueIndexRoute
+  '/inventory/': typeof DashboardInventoryIndexRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
-  '/configuracoes': typeof DashboardConfiguracoesRoute
+  '/settings': typeof DashboardSettingsRoute
   '/': typeof DashboardIndexRoute
-  '/estoque/$productId': typeof DashboardEstoqueProductIdRoute
+  '/inventory/$productId': typeof DashboardInventoryProductIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/estoque': typeof DashboardEstoqueIndexRoute
+  '/inventory': typeof DashboardInventoryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_dashboard': typeof DashboardRouteWithChildren
   '/sign-in': typeof SignInRoute
-  '/_dashboard/configuracoes': typeof DashboardConfiguracoesRoute
+  '/_dashboard/settings': typeof DashboardSettingsRoute
   '/_dashboard/': typeof DashboardIndexRoute
-  '/_dashboard/estoque/$productId': typeof DashboardEstoqueProductIdRoute
+  '/_dashboard/inventory/$productId': typeof DashboardInventoryProductIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/_dashboard/estoque/': typeof DashboardEstoqueIndexRoute
+  '/_dashboard/inventory/': typeof DashboardInventoryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/sign-in'
-    | '/configuracoes'
-    | '/estoque/$productId'
+    | '/settings'
+    | '/inventory/$productId'
     | '/api/auth/$'
-    | '/estoque/'
+    | '/inventory/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/sign-in'
-    | '/configuracoes'
+    | '/settings'
     | '/'
-    | '/estoque/$productId'
+    | '/inventory/$productId'
     | '/api/auth/$'
-    | '/estoque'
+    | '/inventory'
   id:
     | '__root__'
     | '/_dashboard'
     | '/sign-in'
-    | '/_dashboard/configuracoes'
+    | '/_dashboard/settings'
     | '/_dashboard/'
-    | '/_dashboard/estoque/$productId'
+    | '/_dashboard/inventory/$productId'
     | '/api/auth/$'
-    | '/_dashboard/estoque/'
+    | '/_dashboard/inventory/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -136,18 +136,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/configuracoes': {
-      id: '/_dashboard/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/configuracoes'
-      preLoaderRoute: typeof DashboardConfiguracoesRouteImport
+    '/_dashboard/settings': {
+      id: '/_dashboard/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/estoque/': {
-      id: '/_dashboard/estoque/'
-      path: '/estoque'
-      fullPath: '/estoque/'
-      preLoaderRoute: typeof DashboardEstoqueIndexRouteImport
+    '/_dashboard/inventory/': {
+      id: '/_dashboard/inventory/'
+      path: '/inventory'
+      fullPath: '/inventory/'
+      preLoaderRoute: typeof DashboardInventoryIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/api/auth/$': {
@@ -157,28 +157,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_dashboard/estoque/$productId': {
-      id: '/_dashboard/estoque/$productId'
-      path: '/estoque/$productId'
-      fullPath: '/estoque/$productId'
-      preLoaderRoute: typeof DashboardEstoqueProductIdRouteImport
+    '/_dashboard/inventory/$productId': {
+      id: '/_dashboard/inventory/$productId'
+      path: '/inventory/$productId'
+      fullPath: '/inventory/$productId'
+      preLoaderRoute: typeof DashboardInventoryProductIdRouteImport
       parentRoute: typeof DashboardRoute
     }
   }
 }
 
 interface DashboardRouteChildren {
-  DashboardConfiguracoesRoute: typeof DashboardConfiguracoesRoute
+  DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
-  DashboardEstoqueProductIdRoute: typeof DashboardEstoqueProductIdRoute
-  DashboardEstoqueIndexRoute: typeof DashboardEstoqueIndexRoute
+  DashboardInventoryProductIdRoute: typeof DashboardInventoryProductIdRoute
+  DashboardInventoryIndexRoute: typeof DashboardInventoryIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardConfiguracoesRoute: DashboardConfiguracoesRoute,
+  DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
-  DashboardEstoqueProductIdRoute: DashboardEstoqueProductIdRoute,
-  DashboardEstoqueIndexRoute: DashboardEstoqueIndexRoute,
+  DashboardInventoryProductIdRoute: DashboardInventoryProductIdRoute,
+  DashboardInventoryIndexRoute: DashboardInventoryIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

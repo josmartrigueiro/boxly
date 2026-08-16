@@ -9,7 +9,7 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useLowStockThreshold } from "@/hooks/use-low-stock-threshold";
 
-export const Route = createFileRoute("/_dashboard/configuracoes")({
+export const Route = createFileRoute("/_dashboard/settings")({
 	component: ConfiguracoesPage,
 });
 

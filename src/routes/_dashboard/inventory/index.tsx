@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useLowStockThreshold } from "@/hooks/use-low-stock-threshold";
 import { getStockStatus, MOCK_PRODUCTS } from "@/lib/mock-products";
 
-export const Route = createFileRoute("/_dashboard/estoque/")({
+export const Route = createFileRoute("/_dashboard/inventory/")({
 	component: EstoquePage,
 });
 
