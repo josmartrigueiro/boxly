@@ -1,6 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, LogOut, Package, Settings } from "lucide-react";
+import {
+	Building2,
+	ClipboardList,
+	LayoutDashboard,
+	LogOut,
+	Package,
+	Settings,
+} from "lucide-react";
 
 import {
 	Sidebar,
@@ -20,6 +27,8 @@ import { sessionQueryKey } from "@/lib/auth-functions";
 const NAV_ITEMS = [
 	{ to: "/", label: "Dashboard", icon: LayoutDashboard },
 	{ to: "/inventory", label: "Estoque", icon: Package },
+	{ to: "/purchase-orders", label: "Pedidos", icon: ClipboardList },
+	{ to: "/suppliers", label: "Fornecedores", icon: Building2 },
 	{ to: "/settings", label: "Configurações", icon: Settings },
 ] as const;
 
