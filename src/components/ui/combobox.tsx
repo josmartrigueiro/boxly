@@ -69,7 +69,7 @@ function Combobox({
 				</Button>
 			</Group>
 			<Popover className="z-50 w-(--trigger-width) overflow-hidden rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md outline-none data-[entering]:fade-in-0 data-[entering]:zoom-in-95 data-[exiting]:fade-out-0 data-[exiting]:zoom-out-95 data-[entering]:animate-in data-[exiting]:animate-out">
-				<ListBox className="max-h-(--max-height) overflow-y-auto p-1 outline-none">
+				<ListBox className="max-h-72 overflow-y-auto p-1 outline-none">
 					{(item: ComboboxItem) => (
 						<ListBoxItem
 							id={item.id}

@@ -84,7 +84,7 @@ function SelectContent({
 			)}
 			{...props}
 		>
-			<ListBox className="max-h-(--max-height) overflow-y-auto p-1 outline-none">
+			<ListBox className="max-h-72 overflow-y-auto p-1 outline-none">
 				{children}
 			</ListBox>
 		</Popover>
