@@ -195,6 +195,7 @@ export const products = pgTable("products", {
 	unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).notNull(),
 	salePrice: numeric("sale_price", { precision: 10, scale: 2 }).notNull(),
 	quantity: integer("quantity").notNull().default(0),
+	receivedQuantity: integer("received_quantity"),
 	purchaseOrderId: uuid("purchase_order_id").references(
 		() => purchaseOrders.id,
 		{ onDelete: "set null" },

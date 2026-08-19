@@ -1,5 +1,6 @@
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { HeaderActionsPortal } from "@/components/header-actions-context";
@@ -17,7 +18,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { createProduct, productsQueryKey } from "@/lib/products";
+import { useTiktokCommission } from "@/hooks/use-tiktok-commission";
+import { createProduct, listProducts, productsQueryKey } from "@/lib/products";
+import { computeChargesTotal } from "@/lib/purchase-order-totals";
 import {
 	listPurchaseOrders,
 	purchaseOrdersQueryKey,
@@ -29,6 +32,10 @@ const STATUS_OPTIONS = [
 ];
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+	style: "currency",
+	currency: "BRL",
+});
 
 type ProductFormProps = {
 	onSuccess?: () => void;
@@ -36,10 +43,17 @@ type ProductFormProps = {
 
 export function ProductForm({ onSuccess }: ProductFormProps) {
 	const queryClient = useQueryClient();
+	const [salePriceTouched, setSalePriceTouched] = useState(false);
+	const { commission } = useTiktokCommission();
 
 	const { data: purchaseOrders = [], isLoading: isLoadingOrders } = useQuery({
 		queryKey: purchaseOrdersQueryKey,
 		queryFn: () => listPurchaseOrders(),
+	});
+
+	const { data: existingProducts = [] } = useQuery({
+		queryKey: productsQueryKey,
+		queryFn: () => listProducts(),
 	});
 
 	const purchaseOrderOptions = purchaseOrders.map((order) => ({
@@ -53,6 +67,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 			queryClient.invalidateQueries({ queryKey: productsQueryKey });
 			toast.success("Produto cadastrado!");
 			form.reset();
+			setSalePriceTouched(false);
 			onSuccess?.();
 		},
 		onError: (error) => {
@@ -62,7 +77,6 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 
 	const form = useForm({
 		defaultValues: {
-			sku: "",
 			name: "",
 			category: "",
 			unitCost: 0,
@@ -79,6 +93,62 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 		},
 	});
 
+	const [unitCost, initialQuantity, purchaseOrderId] = useStore(
+		form.store,
+		(state) => [
+			state.values.unitCost,
+			state.values.initialQuantity,
+			state.values.purchaseOrderId,
+		],
+	);
+
+	const pricing = useMemo(() => {
+		if (!unitCost || unitCost <= 0) return null;
+
+		const order = purchaseOrders.find((item) => item.id === purchaseOrderId);
+		if (!order) {
+			return { freightPerUnit: 0, suggestedPrice: unitCost * 2 };
+		}
+
+		const orderCharges = computeChargesTotal(
+			order.charges,
+			Number(order.productsValue),
+		);
+		const thisValue = unitCost * initialQuantity;
+		const siblingsValue = existingProducts
+			.filter((product) => product.purchaseOrderId === purchaseOrderId)
+			.reduce(
+				(sum, product) =>
+					sum + Number(product.unitCost) * (product.receivedQuantity ?? 0),
+				0,
+			);
+		const totalValue = thisValue + siblingsValue;
+		const freightShare =
+			totalValue > 0 ? orderCharges * (thisValue / totalValue) : 0;
+		const freightPerUnit =
+			initialQuantity > 0 ? freightShare / initialQuantity : 0;
+
+		return {
+			freightPerUnit,
+			suggestedPrice: (unitCost + freightPerUnit) * 2,
+		};
+	}, [
+		unitCost,
+		initialQuantity,
+		purchaseOrderId,
+		purchaseOrders,
+		existingProducts,
+	]);
+
+	useEffect(() => {
+		if (!salePriceTouched && pricing) {
+			form.setFieldValue(
+				"salePrice",
+				Math.round(pricing.suggestedPrice * 100) / 100,
+			);
+		}
+	}, [pricing, salePriceTouched, form.setFieldValue]);
+
 	return (
 		<form
 			noValidate
@@ -89,44 +159,6 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 			}}
 			className="flex flex-col gap-6"
 		>
-			<form.Field
-				name="sku"
-				validators={{
-					onBlur: ({ value }) => (!value ? "Informe o código/SKU" : undefined),
-				}}
-			>
-				{(field) => {
-					const hasError =
-						field.state.meta.isTouched && !field.state.meta.isValid;
-					return (
-						<FieldRow
-							label="Código/SKU"
-							htmlFor={field.name}
-							description="Identificador único do produto, usado em toda a listagem"
-							required
-						>
-							<Input
-								id={field.name}
-								placeholder="Ex: P266"
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-								aria-invalid={hasError}
-							/>
-							{hasError ? (
-								<FieldError
-									errors={field.state.meta.errors.map((message) => ({
-										message,
-									}))}
-								/>
-							) : null}
-						</FieldRow>
-					);
-				}}
-			</form.Field>
-
-			<FieldRowDivider />
-
 			<form.Field
 				name="name"
 				validators={{
@@ -141,7 +173,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 						<FieldRow
 							label="Nome"
 							htmlFor={field.name}
-							description="Nome do produto como vai aparecer na listagem"
+							description="Nome do produto como vai aparecer na listagem. O código/SKU é gerado automaticamente."
 							required
 						>
 							<Input
@@ -180,7 +212,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 						<FieldRow
 							label="Categoria/Linha"
 							htmlFor={field.name}
-							description="Agrupamento usado no filtro da listagem"
+							description="Agrupamento usado no filtro da listagem e na geração do código"
 							required
 						>
 							<Input
@@ -243,50 +275,12 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 
 			<FieldRowDivider />
 
-			<form.Field
-				name="salePrice"
-				validators={{
-					onBlur: ({ value }) =>
-						!value || value <= 0 ? "Informe o preço de venda" : undefined,
-				}}
-			>
-				{(field) => {
-					const hasError =
-						field.state.meta.isTouched && !field.state.meta.isValid;
-					return (
-						<FieldRow
-							label="Preço de venda"
-							htmlFor={field.name}
-							description="Preço final cobrado do cliente"
-							required
-						>
-							<CurrencyField
-								id={field.name}
-								value={field.state.value}
-								onChange={(value) => field.handleChange(value)}
-								onBlur={field.handleBlur}
-								invalid={hasError}
-							/>
-							{hasError ? (
-								<FieldError
-									errors={field.state.meta.errors.map((message) => ({
-										message,
-									}))}
-								/>
-							) : null}
-						</FieldRow>
-					);
-				}}
-			</form.Field>
-
-			<FieldRowDivider />
-
 			<form.Field name="initialQuantity">
 				{(field) => (
 					<FieldRow
 						label="Quantidade inicial"
 						htmlFor={field.name}
-						description="Se preenchido, já registra uma entrada de estoque com esse valor"
+						description="Se preenchido, já registra uma entrada de estoque com esse valor. Também é usada para ratear o frete do pedido entre os produtos."
 					>
 						<NumberField
 							id={field.name}
@@ -305,7 +299,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 					<FieldRow
 						label="Fornecedor/Pedido de compra"
 						htmlFor={field.name}
-						description="De qual pedido este produto veio, se aplicável"
+						description="De qual pedido este produto veio. Usado também pra ratear o frete e as taxas do pedido proporcionalmente ao valor de cada produto (custo × quantidade recebida)."
 					>
 						{isLoadingOrders ? (
 							<Skeleton className="h-8 w-full" />
@@ -329,6 +323,63 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 						)}
 					</FieldRow>
 				)}
+			</form.Field>
+
+			<FieldRowDivider />
+
+			<form.Field
+				name="salePrice"
+				validators={{
+					onBlur: ({ value }) =>
+						!value || value <= 0 ? "Informe o preço de venda" : undefined,
+				}}
+			>
+				{(field) => {
+					const hasError =
+						field.state.meta.isTouched && !field.state.meta.isValid;
+					const tiktokPrice = field.state.value * (1 + commission / 100);
+					return (
+						<FieldRow
+							label="Preço de venda (Final)"
+							htmlFor={field.name}
+							description="Sugerido automaticamente com markup de 100% (margem de 50%) sobre o custo já com o rateio do frete/taxas do pedido — mas você pode ajustar livremente pra mais ou pra menos."
+							required
+						>
+							<CurrencyField
+								id={field.name}
+								value={field.state.value}
+								onChange={(value) => {
+									field.handleChange(value);
+									setSalePriceTouched(true);
+								}}
+								onBlur={field.handleBlur}
+								invalid={hasError}
+							/>
+							{hasError ? (
+								<FieldError
+									errors={field.state.meta.errors.map((message) => ({
+										message,
+									}))}
+								/>
+							) : null}
+							{pricing && pricing.freightPerUnit > 0 ? (
+								<p className="text-xs text-muted-foreground">
+									Frete/taxas ratados:{" "}
+									{currencyFormatter.format(pricing.freightPerUnit)}
+									/un.
+								</p>
+							) : null}
+							{field.state.value > 0 ? (
+								<p className="text-xs text-muted-foreground">
+									Preço no TikTok Shop (comissão de {commission}%):{" "}
+									<span className="font-medium text-foreground">
+										{currencyFormatter.format(tiktokPrice)}
+									</span>
+								</p>
+							) : null}
+						</FieldRow>
+					);
+				}}
 			</form.Field>
 
 			<FieldRowDivider />

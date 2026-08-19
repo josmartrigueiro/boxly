@@ -24,6 +24,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { useTiktokCommission } from "@/hooks/use-tiktok-commission";
 import { getMargin, getProduct, productQueryKey } from "@/lib/products";
 import {
 	listMovementsForProduct,
@@ -53,6 +54,7 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
 function ProductDetailPage() {
 	const { productId } = Route.useParams();
 	const [movementDialogOpen, setMovementDialogOpen] = useState(false);
+	const { commission } = useTiktokCommission();
 
 	const { data: product, isLoading } = useQuery({
 		queryKey: productQueryKey(productId),
@@ -98,6 +100,7 @@ function ProductDetailPage() {
 	const salePrice = Number(product.salePrice);
 	const margin = getMargin(unitCost, salePrice);
 	const profit = salePrice - unitCost;
+	const tiktokPrice = salePrice * (1 + commission / 100);
 
 	return (
 		<>
@@ -212,6 +215,14 @@ function ProductDetailPage() {
 								<span className="text-muted-foreground">Margem</span>
 								<span className="font-mono tabular-nums font-semibold text-primary">
 									{margin.toFixed(0)}%
+								</span>
+							</div>
+							<div className="flex items-center justify-between border-t border-dashed border-border pt-2">
+								<span className="text-muted-foreground">
+									Preço TikTok Shop ({commission}%)
+								</span>
+								<span className="font-mono tabular-nums text-foreground">
+									{currencyFormatter.format(tiktokPrice)}
 								</span>
 							</div>
 						</CardContent>
