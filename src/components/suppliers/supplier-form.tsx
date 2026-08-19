@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/field";
 import { FieldRow, FieldRowDivider } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
+import { formatCnpj, isValidCnpj } from "@/lib/cnpj";
 import { createSupplier, suppliersQueryKey } from "@/lib/suppliers";
 
 type SupplierFormProps = {
@@ -33,14 +34,15 @@ export function SupplierForm({
 			form.reset();
 			onSuccess?.(supplier.id);
 		},
-		onError: () => {
-			toast.error("Não foi possível cadastrar o fornecedor.");
+		onError: (error) => {
+			toast.error(error.message || "Não foi possível cadastrar o fornecedor.");
 		},
 	});
 
 	const form = useForm({
 		defaultValues: {
 			name: "",
+			cnpj: "",
 			platform: "",
 			location: "",
 			phone: "",
@@ -91,6 +93,46 @@ export function SupplierForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(event) => field.handleChange(event.target.value)}
+									aria-invalid={hasError}
+								/>
+								{hasError ? (
+									<FieldError
+										errors={field.state.meta.errors.map((message) => ({
+											message,
+										}))}
+									/>
+								) : null}
+							</FieldRow>
+						);
+					}}
+				</form.Field>
+
+				<FieldRowDivider />
+
+				<form.Field
+					name="cnpj"
+					validators={{
+						onBlur: ({ value }) =>
+							value && !isValidCnpj(value) ? "CNPJ inválido" : undefined,
+					}}
+				>
+					{(field) => {
+						const hasError =
+							field.state.meta.isTouched && !field.state.meta.isValid;
+						return (
+							<FieldRow
+								label="CNPJ"
+								htmlFor={field.name}
+								description="CNPJ do fornecedor, se houver"
+							>
+								<Input
+									id={field.name}
+									placeholder="00.000.000/0000-00"
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(event) =>
+										field.handleChange(formatCnpj(event.target.value))
+									}
 									aria-invalid={hasError}
 								/>
 								{hasError ? (
@@ -199,6 +241,42 @@ export function SupplierForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(event) => field.handleChange(event.target.value)}
+									aria-invalid={hasError}
+								/>
+								{hasError ? (
+									<FieldError
+										errors={field.state.meta.errors.map((message) => ({
+											message,
+										}))}
+									/>
+								) : null}
+							</Field>
+						);
+					}}
+				</form.Field>
+
+				<form.Field
+					name="cnpj"
+					validators={{
+						onBlur: ({ value }) =>
+							value && !isValidCnpj(value) ? "CNPJ inválido" : undefined,
+					}}
+				>
+					{(field) => {
+						const hasError =
+							field.state.meta.isTouched && !field.state.meta.isValid;
+						return (
+							<Field>
+								<FieldLabel htmlFor={field.name}>CNPJ</FieldLabel>
+								<Input
+									id={field.name}
+									name={field.name}
+									placeholder="00.000.000/0000-00"
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(event) =>
+										field.handleChange(formatCnpj(event.target.value))
+									}
 									aria-invalid={hasError}
 								/>
 								{hasError ? (

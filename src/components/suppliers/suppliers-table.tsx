@@ -16,6 +16,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { formatCnpj } from "@/lib/cnpj";
 import { listSuppliers, suppliersQueryKey } from "@/lib/suppliers";
 
 export function SuppliersTable() {
@@ -59,6 +60,7 @@ export function SuppliersTable() {
 							<TableHeader>
 								<TableRow className="bg-primary/5">
 									<TableHead className="tracking-wide">Nome</TableHead>
+									<TableHead className="tracking-wide">CNPJ</TableHead>
 									<TableHead className="tracking-wide">
 										Plataforma/Canal
 									</TableHead>
@@ -73,6 +75,9 @@ export function SuppliersTable() {
 									<TableRow key={supplier.id}>
 										<TableCell className="font-medium">
 											{supplier.name}
+										</TableCell>
+										<TableCell className="font-mono text-sm text-muted-foreground">
+											{supplier.cnpj ? formatCnpj(supplier.cnpj) : "—"}
 										</TableCell>
 										<TableCell className="text-sm text-muted-foreground">
 											{supplier.platform || "—"}

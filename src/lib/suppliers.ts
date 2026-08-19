@@ -6,11 +6,16 @@ import { z } from "zod";
 import { db } from "#/db";
 import { suppliers } from "#/db/schema";
 import { auth } from "#/lib/auth";
+import { isValidCnpj, unformatCnpj } from "#/lib/cnpj";
 
 export const suppliersQueryKey = ["suppliers"] as const;
 
 const createSupplierSchema = z.object({
 	name: z.string().min(1, "Nome é obrigatório"),
+	cnpj: z
+		.string()
+		.optional()
+		.refine((value) => !value || isValidCnpj(value), "CNPJ inválido"),
 	platform: z.string().optional(),
 	location: z.string().optional(),
 	phone: z.string().optional(),
@@ -34,16 +39,24 @@ export const createSupplier = createServerFn({ method: "POST" })
 			throw new Error("Unauthorized");
 		}
 
-		const [supplier] = await db
-			.insert(suppliers)
-			.values({
-				name: data.name,
-				platform: data.platform || null,
-				location: data.location || null,
-				phone: data.phone || null,
-				notes: data.notes || null,
-			})
-			.returning();
+		try {
+			const [supplier] = await db
+				.insert(suppliers)
+				.values({
+					name: data.name,
+					cnpj: data.cnpj ? unformatCnpj(data.cnpj) : null,
+					platform: data.platform || null,
+					location: data.location || null,
+					phone: data.phone || null,
+					notes: data.notes || null,
+				})
+				.returning();
 
-		return supplier;
+			return supplier;
+		} catch (error) {
+			if (error instanceof Error && "code" in error && error.code === "23505") {
+				throw new Error("Já existe um fornecedor cadastrado com esse CNPJ.");
+			}
+			throw error;
+		}
 	});

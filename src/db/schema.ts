@@ -102,6 +102,7 @@ export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
 export const suppliers = pgTable("suppliers", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	name: text("name").notNull(),
+	cnpj: text("cnpj").unique(),
 	platform: text("platform"),
 	location: text("location"),
 	phone: text("phone"),
