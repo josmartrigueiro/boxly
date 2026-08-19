@@ -181,3 +181,78 @@ export const purchaseOrderChargeRelations = relations(
 		}),
 	}),
 );
+
+export const productStatusEnum = pgEnum("product_status", [
+	"active",
+	"inactive",
+]);
+
+export const products = pgTable("products", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	sku: text("sku").notNull().unique(),
+	name: text("name").notNull(),
+	category: text("category").notNull(),
+	unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).notNull(),
+	salePrice: numeric("sale_price", { precision: 10, scale: 2 }).notNull(),
+	quantity: integer("quantity").notNull().default(0),
+	purchaseOrderId: uuid("purchase_order_id").references(
+		() => purchaseOrders.id,
+		{ onDelete: "set null" },
+	),
+	photoUrl: text("photo_url"),
+	saleLink: text("sale_link"),
+	status: productStatusEnum("status").notNull().default("active"),
+	notes: text("notes"),
+	createdById: text("created_by_id").references(() => user.id, {
+		onDelete: "set null",
+	}),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at")
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+});
+
+export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
+	"entrada",
+	"saida",
+	"ajuste",
+]);
+
+export const stockMovements = pgTable("stock_movements", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	productId: uuid("product_id")
+		.notNull()
+		.references(() => products.id, { onDelete: "cascade" }),
+	type: stockMovementTypeEnum("type").notNull(),
+	quantity: integer("quantity").notNull(),
+	date: timestamp("date").notNull(),
+	reason: text("reason"),
+	createdById: text("created_by_id").references(() => user.id, {
+		onDelete: "set null",
+	}),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const productRelations = relations(products, ({ one, many }) => ({
+	purchaseOrder: one(purchaseOrders, {
+		fields: [products.purchaseOrderId],
+		references: [purchaseOrders.id],
+	}),
+	createdBy: one(user, {
+		fields: [products.createdById],
+		references: [user.id],
+	}),
+	movements: many(stockMovements),
+}));
+
+export const stockMovementRelations = relations(stockMovements, ({ one }) => ({
+	product: one(products, {
+		fields: [stockMovements.productId],
+		references: [products.id],
+	}),
+	createdBy: one(user, {
+		fields: [stockMovements.createdById],
+		references: [user.id],
+	}),
+}));
