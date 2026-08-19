@@ -144,7 +144,7 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 									</button>
 								</div>
 								<Select
-									items={supplierOptions}
+									placeholder="Selecione um fornecedor"
 									value={field.state.value}
 									onValueChange={(value) => {
 										field.handleChange(value as string);
@@ -152,7 +152,7 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 									}}
 								>
 									<SelectTrigger id={field.name} aria-invalid={hasError}>
-										<SelectValue placeholder="Selecione um fornecedor" />
+										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
 										{supplierOptions.map((option) => (
@@ -314,7 +314,6 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 						description="Situação atual do pedido"
 					>
 						<Select
-							items={STATUS_OPTIONS}
 							value={field.state.value}
 							onValueChange={(value) =>
 								field.handleChange(
@@ -410,7 +409,6 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 										{(kindField) => (
 											<>
 												<Select
-													items={CHARGE_KIND_OPTIONS}
 													value={kindField.state.value}
 													onValueChange={(value) =>
 														kindField.handleChange(

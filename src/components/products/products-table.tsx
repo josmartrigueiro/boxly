@@ -109,7 +109,6 @@ export function ProductsTable() {
 						/>
 					</div>
 					<Select
-						items={CATEGORY_OPTIONS}
 						value={category}
 						onValueChange={(value) => handleCategoryChange(value as string)}
 					>
