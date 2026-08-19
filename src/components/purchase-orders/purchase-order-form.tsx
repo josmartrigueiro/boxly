@@ -1,13 +1,21 @@
+import { getLocalTimeZone, today } from "@internationalized/date";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { SupplierForm } from "@/components/suppliers/supplier-form";
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { DateField } from "@/components/ui/date-field";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { CurrencyField, NumberField } from "@/components/ui/number-field";
 import {
 	Select,
 	SelectContent,
@@ -15,6 +23,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { computeChargesTotal } from "@/lib/purchase-order-totals";
 import {
 	createPurchaseOrder,
 	purchaseOrdersQueryKey,
@@ -27,6 +37,16 @@ const STATUS_OPTIONS = [
 	{ value: "received", label: "Recebido" },
 	{ value: "cancelled", label: "Cancelado" },
 ];
+
+const CHARGE_KIND_OPTIONS = [
+	{ value: "fixed", label: "Valor (R$)" },
+	{ value: "percentage", label: "Porcentagem (%)" },
+];
+
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+	style: "currency",
+	currency: "BRL",
+});
 
 type PurchaseOrderFormProps = {
 	onSuccess?: () => void;
@@ -62,29 +82,27 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 	const form = useForm({
 		defaultValues: {
 			supplierId: "",
-			orderDate: new Date().toISOString().slice(0, 10),
-			itemsCount: "",
-			productsValue: "",
-			freightValue: "",
-			taxValue: "",
-			status: "pending",
+			orderDate: today(getLocalTimeZone()),
+			itemsCount: 1,
+			productsValue: 0,
+			status: "pending" as "pending" | "in_transit" | "received" | "cancelled",
 			notes: "",
+			charges: [] as Array<{
+				name: string;
+				kind: "percentage" | "fixed";
+				value: number;
+			}>,
 		},
 		onSubmit: async ({ value }) => {
 			await mutation.mutateAsync({
 				data: {
 					supplierId: value.supplierId,
-					orderDate: value.orderDate,
-					itemsCount: Number(value.itemsCount || 0),
-					productsValue: Number(value.productsValue || 0),
-					freightValue: Number(value.freightValue || 0),
-					taxValue: Number(value.taxValue || 0),
-					status: value.status as
-						| "pending"
-						| "in_transit"
-						| "received"
-						| "cancelled",
+					orderDate: value.orderDate.toString(),
+					itemsCount: value.itemsCount,
+					productsValue: value.productsValue,
+					status: value.status,
 					notes: value.notes,
+					charges: value.charges,
 				},
 			});
 		},
@@ -98,7 +116,7 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 				event.stopPropagation();
 				form.handleSubmit();
 			}}
-			className="flex flex-col gap-4"
+			className="flex flex-col gap-6"
 		>
 			<FieldGroup>
 				<form.Field
@@ -132,7 +150,7 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 										field.handleBlur();
 									}}
 								>
-									<SelectTrigger id={field.name}>
+									<SelectTrigger id={field.name} aria-invalid={hasError}>
 										<SelectValue placeholder="Selecione um fornecedor" />
 									</SelectTrigger>
 									<SelectContent>
@@ -144,9 +162,11 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 									</SelectContent>
 								</Select>
 								{hasError ? (
-									<p className="text-xs text-destructive" role="alert">
-										{field.state.meta.errors.join(", ")}
-									</p>
+									<FieldError
+										errors={field.state.meta.errors.map((message) => ({
+											message,
+										}))}
+									/>
 								) : null}
 							</Field>
 						);
@@ -166,112 +186,304 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 				)}
 
 				<div className="grid grid-cols-2 gap-4">
-					<form.Field name="orderDate">
-						{(field) => (
-							<Field>
-								<FieldLabel htmlFor={field.name}>Data do pedido</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="date"
-									value={field.state.value}
-									onChange={(event) => field.handleChange(event.target.value)}
-								/>
-							</Field>
-						)}
+					<form.Field
+						name="orderDate"
+						validators={{
+							onChange: ({ value }) =>
+								!value ? "Informe a data do pedido" : undefined,
+						}}
+					>
+						{(field) => {
+							const hasError =
+								field.state.meta.isTouched && !field.state.meta.isValid;
+							return (
+								<Field>
+									<FieldLabel htmlFor={field.name}>Data do pedido</FieldLabel>
+									<DateField
+										id={field.name}
+										value={field.state.value}
+										onChange={(value) => {
+											if (value) field.handleChange(value);
+										}}
+										onBlur={field.handleBlur}
+										invalid={hasError}
+									/>
+									{hasError ? (
+										<FieldError
+											errors={field.state.meta.errors.map((message) => ({
+												message,
+											}))}
+										/>
+									) : null}
+								</Field>
+							);
+						}}
 					</form.Field>
 
-					<form.Field name="itemsCount">
+					<form.Field
+						name="itemsCount"
+						validators={{
+							onBlur: ({ value }) =>
+								!value || value < 1
+									? "Informe a quantidade de itens"
+									: undefined,
+						}}
+					>
+						{(field) => {
+							const hasError =
+								field.state.meta.isTouched && !field.state.meta.isValid;
+							return (
+								<Field>
+									<FieldLabel htmlFor={field.name}>Qtd. de itens</FieldLabel>
+									<NumberField
+										id={field.name}
+										minValue={0}
+										value={field.state.value}
+										onChange={(value) => field.handleChange(value)}
+										onBlur={field.handleBlur}
+										invalid={hasError}
+									/>
+									{hasError ? (
+										<FieldError
+											errors={field.state.meta.errors.map((message) => ({
+												message,
+											}))}
+										/>
+									) : null}
+								</Field>
+							);
+						}}
+					</form.Field>
+				</div>
+
+				<div className="grid grid-cols-2 gap-4">
+					<form.Field
+						name="productsValue"
+						validators={{
+							onBlur: ({ value }) =>
+								!value || value <= 0
+									? "Informe o valor dos produtos"
+									: undefined,
+						}}
+					>
+						{(field) => {
+							const hasError =
+								field.state.meta.isTouched && !field.state.meta.isValid;
+							return (
+								<Field>
+									<FieldLabel htmlFor={field.name}>
+										Valor dos produtos
+									</FieldLabel>
+									<CurrencyField
+										id={field.name}
+										value={field.state.value}
+										onChange={(value) => field.handleChange(value)}
+										onBlur={field.handleBlur}
+										invalid={hasError}
+									/>
+									{hasError ? (
+										<FieldError
+											errors={field.state.meta.errors.map((message) => ({
+												message,
+											}))}
+										/>
+									) : null}
+								</Field>
+							);
+						}}
+					</form.Field>
+
+					<form.Field name="status">
 						{(field) => (
 							<Field>
-								<FieldLabel htmlFor={field.name}>Qtd. de itens</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="number"
-									min={0}
+								<FieldLabel htmlFor={field.name}>Status</FieldLabel>
+								<Select
+									items={STATUS_OPTIONS}
 									value={field.state.value}
-									onChange={(event) => field.handleChange(event.target.value)}
-								/>
+									onValueChange={(value) =>
+										field.handleChange(
+											value as
+												| "pending"
+												| "in_transit"
+												| "received"
+												| "cancelled",
+										)
+									}
+								>
+									<SelectTrigger id={field.name}>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{STATUS_OPTIONS.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</Field>
 						)}
 					</form.Field>
 				</div>
 
-				<div className="grid grid-cols-3 gap-4">
-					<form.Field name="productsValue">
-						{(field) => (
-							<Field>
-								<FieldLabel htmlFor={field.name}>Valor produtos</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="number"
-									min={0}
-									step="0.01"
-									value={field.state.value}
-									onChange={(event) => field.handleChange(event.target.value)}
-								/>
-							</Field>
-						)}
-					</form.Field>
+				<form.Field name="charges" mode="array">
+					{(chargesField) => (
+						<div className="flex flex-col gap-3 rounded-md border border-border/60 p-3">
+							<div className="flex items-center justify-between">
+								<FieldLabel>Impostos e taxas</FieldLabel>
+								<button
+									type="button"
+									onClick={() =>
+										chargesField.pushValue({
+											name: "",
+											kind: "fixed",
+											value: 0,
+										})
+									}
+									className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+								>
+									<Plus className="size-3" />
+									Adicionar taxa
+								</button>
+							</div>
 
-					<form.Field name="freightValue">
-						{(field) => (
-							<Field>
-								<FieldLabel htmlFor={field.name}>Frete</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="number"
-									min={0}
-									step="0.01"
-									value={field.state.value}
-									onChange={(event) => field.handleChange(event.target.value)}
-								/>
-							</Field>
-						)}
-					</form.Field>
+							{chargesField.state.value.length === 0 ? (
+								<p className="text-xs text-muted-foreground">
+									Nenhuma taxa adicionada. Use para frete, alíquotas, etc.
+								</p>
+							) : (
+								chargesField.state.value.map((_, index) => (
+									<div
+										// biome-ignore lint/suspicious/noArrayIndexKey: charge rows have no stable id before creation
+										key={index}
+										className="grid grid-cols-[1fr_auto_auto_auto] items-start gap-2"
+									>
+										<form.Field
+											name={`charges[${index}].name`}
+											validators={{
+												onBlur: ({ value }) =>
+													!value ? "Informe o nome" : undefined,
+											}}
+										>
+											{(field) => {
+												const hasError =
+													field.state.meta.isTouched &&
+													!field.state.meta.isValid;
+												return (
+													<div className="flex flex-col gap-1">
+														<Input
+															placeholder="Ex: Frete, Alíquota"
+															value={field.state.value}
+															onBlur={field.handleBlur}
+															onChange={(event) =>
+																field.handleChange(event.target.value)
+															}
+															aria-invalid={hasError}
+														/>
+														{hasError ? (
+															<FieldError
+																errors={field.state.meta.errors.map(
+																	(message) => ({ message }),
+																)}
+															/>
+														) : null}
+													</div>
+												);
+											}}
+										</form.Field>
 
-					<form.Field name="taxValue">
-						{(field) => (
-							<Field>
-								<FieldLabel htmlFor={field.name}>Impostos/Taxas</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="number"
-									min={0}
-									step="0.01"
-									value={field.state.value}
-									onChange={(event) => field.handleChange(event.target.value)}
-								/>
-							</Field>
-						)}
-					</form.Field>
-				</div>
+										<form.Field name={`charges[${index}].kind`}>
+											{(kindField) => (
+												<>
+													<Select
+														items={CHARGE_KIND_OPTIONS}
+														value={kindField.state.value}
+														onValueChange={(value) =>
+															kindField.handleChange(
+																value as "percentage" | "fixed",
+															)
+														}
+													>
+														<SelectTrigger className="w-40">
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{CHARGE_KIND_OPTIONS.map((option) => (
+																<SelectItem
+																	key={option.value}
+																	value={option.value}
+																>
+																	{option.label}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
 
-				<form.Field name="status">
-					{(field) => (
-						<Field>
-							<FieldLabel htmlFor={field.name}>Status</FieldLabel>
-							<Select
-								items={STATUS_OPTIONS}
-								value={field.state.value}
-								onValueChange={(value) => field.handleChange(value as string)}
-							>
-								<SelectTrigger id={field.name}>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{STATUS_OPTIONS.map((option) => (
-										<SelectItem key={option.value} value={option.value}>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</Field>
+													<form.Field
+														name={`charges[${index}].value`}
+														validators={{
+															onBlur: ({ value }) =>
+																value == null || value < 0
+																	? "Valor inválido"
+																	: undefined,
+														}}
+													>
+														{(field) => {
+															const hasError =
+																field.state.meta.isTouched &&
+																!field.state.meta.isValid;
+															return (
+																<div className="flex w-36 flex-col gap-1">
+																	{kindField.state.value === "percentage" ? (
+																		<NumberField
+																			minValue={0}
+																			maxValue={100}
+																			suffix="%"
+																			value={field.state.value}
+																			onChange={(value) =>
+																				field.handleChange(value)
+																			}
+																			onBlur={field.handleBlur}
+																			invalid={hasError}
+																		/>
+																	) : (
+																		<CurrencyField
+																			value={field.state.value}
+																			onChange={(value) =>
+																				field.handleChange(value)
+																			}
+																			onBlur={field.handleBlur}
+																			invalid={hasError}
+																		/>
+																	)}
+																	{hasError ? (
+																		<FieldError
+																			errors={field.state.meta.errors.map(
+																				(message) => ({ message }),
+																			)}
+																		/>
+																	) : null}
+																</div>
+															);
+														}}
+													</form.Field>
+												</>
+											)}
+										</form.Field>
+
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											onClick={() => chargesField.removeValue(index)}
+											aria-label="Remover taxa"
+										>
+											<X className="size-4" />
+										</Button>
+									</div>
+								))
+							)}
+						</div>
 					)}
 				</form.Field>
 
@@ -279,9 +491,8 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 					{(field) => (
 						<Field>
 							<FieldLabel htmlFor={field.name}>Observações</FieldLabel>
-							<Input
+							<Textarea
 								id={field.name}
-								name={field.name}
 								value={field.state.value}
 								onChange={(event) => field.handleChange(event.target.value)}
 							/>
@@ -289,6 +500,30 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 					)}
 				</form.Field>
 			</FieldGroup>
+
+			<form.Subscribe
+				selector={(state) => [state.values.productsValue, state.values.charges]}
+			>
+				{([productsValue, charges]) => {
+					const total =
+						Number(productsValue) +
+						computeChargesTotal(
+							charges as Array<{
+								kind: "percentage" | "fixed";
+								value: number;
+							}>,
+							Number(productsValue),
+						);
+					return (
+						<div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+							<span className="text-muted-foreground">Total estimado</span>
+							<span className="font-mono font-semibold tabular-nums text-foreground">
+								{currencyFormatter.format(total)}
+							</span>
+						</div>
+					);
+				}}
+			</form.Subscribe>
 
 			<form.Subscribe
 				selector={(state) => [state.canSubmit, state.isSubmitting]}

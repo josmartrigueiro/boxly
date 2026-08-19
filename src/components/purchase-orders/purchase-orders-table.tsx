@@ -11,6 +11,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { computeChargesTotal } from "@/lib/purchase-order-totals";
 import {
 	listPurchaseOrders,
 	purchaseOrdersQueryKey,
@@ -83,10 +84,7 @@ export function PurchaseOrdersTable() {
 										Produtos
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
-										Frete
-									</TableHead>
-									<TableHead className="text-end tracking-wide">
-										Impostos
+										Taxas
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
 										Total
@@ -99,9 +97,11 @@ export function PurchaseOrdersTable() {
 							<TableBody>
 								{orders.map((order) => {
 									const products = Number(order.productsValue);
-									const freight = Number(order.freightValue);
-									const tax = Number(order.taxValue);
-									const total = products + freight + tax;
+									const chargesTotal = computeChargesTotal(
+										order.charges,
+										products,
+									);
+									const total = products + chargesTotal;
 									const status = STATUS_CONFIG[order.status];
 
 									return (
@@ -119,10 +119,7 @@ export function PurchaseOrdersTable() {
 												{currencyFormatter.format(products)}
 											</TableCell>
 											<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
-												{currencyFormatter.format(freight)}
-											</TableCell>
-											<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
-												{currencyFormatter.format(tax)}
+												{currencyFormatter.format(chargesTotal)}
 											</TableCell>
 											<TableCell className="text-end font-mono text-sm tabular-nums font-semibold text-foreground">
 												{currencyFormatter.format(total)}
