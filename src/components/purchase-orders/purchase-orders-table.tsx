@@ -3,6 +3,7 @@ import { ClipboardList } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -33,6 +34,8 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 	timeZone: "UTC",
 });
 
+const SKELETON_ROW_WIDTHS = ["w-28", "w-20", "w-32", "w-24", "w-28"];
+
 export function PurchaseOrdersTable() {
 	const { data: orders = [], isLoading } = useQuery({
 		queryKey: purchaseOrdersQueryKey,
@@ -48,18 +51,72 @@ export function PurchaseOrdersTable() {
 					</span>
 					<CardTitle className="text-sm font-medium text-muted-foreground">
 						Pedidos registrados
-						<Badge className="ml-2 size-6 rounded-full border-border/60 bg-muted p-0.5 font-mono text-xs tabular-nums text-muted-foreground shadow-sm">
-							{orders.length}
-						</Badge>
+						{isLoading ? (
+							<Skeleton className="ml-2 inline-block size-6 rounded-full align-middle" />
+						) : (
+							<Badge className="ml-2 size-6 rounded-full border-border/60 bg-muted p-0.5 font-mono text-xs tabular-nums text-muted-foreground shadow-sm">
+								{orders.length}
+							</Badge>
+						)}
 					</CardTitle>
 				</div>
 			</CardHeader>
 
 			<CardContent className="mt-4">
 				{isLoading ? (
-					<p className="py-8 text-center text-sm text-muted-foreground">
-						Carregando...
-					</p>
+					<div className="overflow-hidden rounded-lg border border-border/60">
+						<Table>
+							<TableHeader>
+								<TableRow className="bg-primary/5">
+									<TableHead className="tracking-wide">Fornecedor</TableHead>
+									<TableHead className="tracking-wide">Data</TableHead>
+									<TableHead className="text-center tracking-wide">
+										Itens
+									</TableHead>
+									<TableHead className="text-end tracking-wide">
+										Produtos
+									</TableHead>
+									<TableHead className="text-end tracking-wide">
+										Taxas
+									</TableHead>
+									<TableHead className="text-end tracking-wide">
+										Total
+									</TableHead>
+									<TableHead className="text-center tracking-wide">
+										Status
+									</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{SKELETON_ROW_WIDTHS.map((width, index) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders, never reordered
+									<TableRow key={`skeleton-row-${index}`}>
+										<TableCell>
+											<Skeleton className={`h-4 ${width}`} />
+										</TableCell>
+										<TableCell>
+											<Skeleton className="h-4 w-20" />
+										</TableCell>
+										<TableCell className="text-center">
+											<Skeleton className="mx-auto h-4 w-6" />
+										</TableCell>
+										<TableCell className="text-end">
+											<Skeleton className="ml-auto h-4 w-16" />
+										</TableCell>
+										<TableCell className="text-end">
+											<Skeleton className="ml-auto h-4 w-16" />
+										</TableCell>
+										<TableCell className="text-end">
+											<Skeleton className="ml-auto h-4 w-20" />
+										</TableCell>
+										<TableCell className="text-center">
+											<Skeleton className="mx-auto h-5 w-16 rounded-full" />
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</div>
 				) : orders.length === 0 ? (
 					<div className="flex flex-col items-center justify-center px-4 py-16 text-center">
 						<h3 className="mb-2 text-lg font-semibold">

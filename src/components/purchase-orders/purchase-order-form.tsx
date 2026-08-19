@@ -20,6 +20,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { computeChargesTotal } from "@/lib/purchase-order-totals";
 import {
@@ -53,7 +54,7 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 	const queryClient = useQueryClient();
 	const [showNewSupplier, setShowNewSupplier] = useState(false);
 
-	const { data: suppliers = [] } = useQuery({
+	const { data: suppliers = [], isLoading: isLoadingSuppliers } = useQuery({
 		queryKey: suppliersQueryKey,
 		queryFn: () => listSuppliers(),
 	});
@@ -143,25 +144,29 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 										Novo fornecedor
 									</button>
 								</div>
-								<Select
-									placeholder="Selecione um fornecedor"
-									value={field.state.value}
-									onValueChange={(value) => {
-										field.handleChange(value as string);
-										field.handleBlur();
-									}}
-								>
-									<SelectTrigger id={field.name} aria-invalid={hasError}>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										{supplierOptions.map((option) => (
-											<SelectItem key={option.value} value={option.value}>
-												{option.label}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+								{isLoadingSuppliers ? (
+									<Skeleton className="h-8 w-full" />
+								) : (
+									<Select
+										placeholder="Selecione um fornecedor"
+										value={field.state.value}
+										onValueChange={(value) => {
+											field.handleChange(value as string);
+											field.handleBlur();
+										}}
+									>
+										<SelectTrigger id={field.name} aria-invalid={hasError}>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{supplierOptions.map((option) => (
+												<SelectItem key={option.value} value={option.value}>
+													{option.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								)}
 								{hasError ? (
 									<FieldError
 										errors={field.state.meta.errors.map((message) => ({
