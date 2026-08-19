@@ -16,7 +16,7 @@ function NewPurchaseOrderPage() {
 			<AppHeader title="Novo pedido de compra" />
 
 			<div className="w-full flex-1 overflow-y-auto p-6">
-				<div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+				<div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
 					<Link
 						to="/purchase-orders"
 						className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -24,10 +24,6 @@ function NewPurchaseOrderPage() {
 						<ArrowLeft className="size-4" />
 						Voltar para Pedidos
 					</Link>
-
-					<p className="text-sm text-muted-foreground">
-						Registre o pedido que você fez num fornecedor/distribuidora.
-					</p>
 
 					<PurchaseOrderForm
 						onSuccess={() => navigate({ to: "/purchase-orders" })}

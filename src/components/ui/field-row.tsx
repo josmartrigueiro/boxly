@@ -40,7 +40,7 @@ function FieldRow({
 			</div>
 			<div
 				className={cn(
-					"col-span-2 flex max-w-md flex-col gap-1.5",
+					"col-span-2 flex max-w-xs flex-col gap-1.5",
 					contentClassName,
 				)}
 			>
