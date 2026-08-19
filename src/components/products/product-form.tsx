@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useTiktokCommission } from "@/hooks/use-tiktok-commission";
+import { DEFAULT_PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { createProduct, listProducts, productsQueryKey } from "@/lib/products";
 import { computeChargesTotal } from "@/lib/purchase-order-totals";
 import {
@@ -63,7 +64,10 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 	}));
 
 	const categoryOptions = Array.from(
-		new Set(existingProducts.map((product) => product.category)),
+		new Set([
+			...DEFAULT_PRODUCT_CATEGORIES,
+			...existingProducts.map((product) => product.category),
+		]),
 	)
 		.sort((a, b) => a.localeCompare(b))
 		.map((category) => ({ id: category, label: category }));

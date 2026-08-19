@@ -1,0 +1,28 @@
+// Categorias/linhas padrão da papelaria, sugeridas no cadastro de produto
+// além de qualquer categoria já usada em produtos existentes.
+export const DEFAULT_PRODUCT_CATEGORIES = [
+	"Caderno Colegial",
+	"Caderno Universitário",
+	"Caderno A5",
+	"Caderno A6",
+	"Caderno B5",
+	"Caderno B6",
+	"Bloquinho",
+	"Caderneta",
+	"Planner",
+	"Caneta Gel",
+	"Caneta Brush",
+	"Caneta Esferográfica",
+	"Lápis Grafite",
+	"Lápis de Cor",
+	"Lapiseira",
+	"Apontador",
+	"Borracha",
+	"Cola em Fita",
+	"Cola Bastão",
+	"Corretivo",
+	"Cortador",
+	"Tesoura",
+	"Chaveiro",
+	"Marca Texto",
+] as const;
