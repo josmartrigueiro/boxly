@@ -30,6 +30,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { useTiktokCommission } from "@/hooks/use-tiktok-commission";
 import { getMargin, listProducts, productsQueryKey } from "@/lib/products";
 
 const PAGE_SIZE = 10;
@@ -45,6 +46,7 @@ export function ProductsTable() {
 	const [search, setSearch] = useState("");
 	const [category, setCategory] = useState("all");
 	const [page, setPage] = useState(1);
+	const { commission } = useTiktokCommission();
 
 	const { data: products = [], isLoading } = useQuery({
 		queryKey: productsQueryKey,
@@ -146,8 +148,7 @@ export function ProductsTable() {
 						<Table>
 							<TableHeader>
 								<TableRow className="bg-primary/5">
-									<TableHead className="tracking-wide">Produto</TableHead>
-									<TableHead className="tracking-wide">Linha</TableHead>
+									<TableHead className="tracking-wide">Nome</TableHead>
 									<TableHead className="tracking-wide">Pedido</TableHead>
 									<TableHead className="text-center tracking-wide">
 										Qtd. Atual
@@ -157,6 +158,9 @@ export function ProductsTable() {
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
 										Preço de Venda
+									</TableHead>
+									<TableHead className="text-end tracking-wide">
+										Preço TikTok
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
 										Margem
@@ -174,13 +178,13 @@ export function ProductsTable() {
 											<Skeleton className={`h-4 ${width}`} />
 										</TableCell>
 										<TableCell>
-											<Skeleton className="h-4 w-24" />
-										</TableCell>
-										<TableCell>
 											<Skeleton className="h-4 w-20" />
 										</TableCell>
 										<TableCell className="text-center">
 											<Skeleton className="mx-auto h-4 w-6" />
+										</TableCell>
+										<TableCell className="text-end">
+											<Skeleton className="ml-auto h-4 w-16" />
 										</TableCell>
 										<TableCell className="text-end">
 											<Skeleton className="ml-auto h-4 w-16" />
@@ -218,8 +222,7 @@ export function ProductsTable() {
 						<Table>
 							<TableHeader>
 								<TableRow className="bg-primary/5">
-									<TableHead className="tracking-wide">Produto</TableHead>
-									<TableHead className="tracking-wide">Linha</TableHead>
+									<TableHead className="tracking-wide">Nome</TableHead>
 									<TableHead className="tracking-wide">Pedido</TableHead>
 									<TableHead className="text-center tracking-wide">
 										Qtd. Atual
@@ -229,6 +232,9 @@ export function ProductsTable() {
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
 										Preço de Venda
+									</TableHead>
+									<TableHead className="text-end tracking-wide">
+										Preço TikTok
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
 										Margem
@@ -243,6 +249,7 @@ export function ProductsTable() {
 									const unitCost = Number(product.unitCost);
 									const salePrice = Number(product.salePrice);
 									const margin = getMargin(unitCost, salePrice);
+									const tiktokPrice = salePrice * (1 + commission / 100);
 									return (
 										<TableRow key={product.id}>
 											<TableCell className="font-medium">
@@ -259,14 +266,6 @@ export function ProductsTable() {
 												</div>
 											</TableCell>
 											<TableCell className="text-sm text-muted-foreground">
-												<div
-													className="max-w-[140px] truncate"
-													title={product.category}
-												>
-													{product.category}
-												</div>
-											</TableCell>
-											<TableCell className="text-sm text-muted-foreground">
 												{product.purchaseOrder?.supplier.name ?? "—"}
 											</TableCell>
 											<TableCell className="text-center font-mono text-sm tabular-nums font-semibold text-foreground">
@@ -277,6 +276,9 @@ export function ProductsTable() {
 											</TableCell>
 											<TableCell className="text-end font-mono text-sm tabular-nums font-medium text-foreground">
 												{currencyFormatter.format(salePrice)}
+											</TableCell>
+											<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
+												{currencyFormatter.format(tiktokPrice)}
 											</TableCell>
 											<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
 												{margin.toFixed(0)}%

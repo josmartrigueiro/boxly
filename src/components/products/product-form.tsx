@@ -21,7 +21,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useTiktokCommission } from "@/hooks/use-tiktok-commission";
 import { DEFAULT_PRODUCT_CATEGORIES } from "@/lib/product-categories";
-import { createProduct, listProducts, productsQueryKey } from "@/lib/products";
+import {
+	createProduct,
+	getMargin,
+	getPriceFromMargin,
+	listProducts,
+	productsQueryKey,
+} from "@/lib/products";
 import { computeChargesTotal } from "@/lib/purchase-order-totals";
 import {
 	listPurchaseOrders,
@@ -92,6 +98,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 			category: "",
 			unitCost: 0,
 			salePrice: 0,
+			margin: 50,
 			initialQuantity: 0,
 			purchaseOrderId: "",
 			photoUrl: "",
@@ -118,7 +125,10 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 
 		const order = purchaseOrders.find((item) => item.id === purchaseOrderId);
 		if (!order) {
-			return { freightPerUnit: 0, suggestedPrice: unitCost * 2 };
+			return {
+				freightPerUnit: 0,
+				suggestedPrice: getPriceFromMargin(unitCost, 50),
+			};
 		}
 
 		const orderCharges = computeChargesTotal(
@@ -141,7 +151,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 
 		return {
 			freightPerUnit,
-			suggestedPrice: (unitCost + freightPerUnit) * 2,
+			suggestedPrice: getPriceFromMargin(unitCost + freightPerUnit, 50),
 		};
 	}, [
 		unitCost,
@@ -346,30 +356,69 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 						!value || value <= 0 ? "Informe o preço de venda" : undefined,
 				}}
 			>
-				{(field) => {
+				{(priceField) => {
 					const hasError =
-						field.state.meta.isTouched && !field.state.meta.isValid;
-					const tiktokPrice = field.state.value * (1 + commission / 100);
+						priceField.state.meta.isTouched && !priceField.state.meta.isValid;
+					const tiktokPrice = priceField.state.value * (1 + commission / 100);
+					const costWithFreight = unitCost + (pricing?.freightPerUnit ?? 0);
 					return (
 						<FieldRow
-							label="Preço de venda (Final)"
-							htmlFor={field.name}
-							description="Sugerido automaticamente com markup de 100% (margem de 50%) sobre o custo já com o rateio do frete/taxas do pedido — mas você pode ajustar livremente pra mais ou pra menos."
+							label="Preço de venda e margem"
+							htmlFor={priceField.name}
+							description="Ligados: mude o preço ou a margem que o outro recalcula sozinho. Sugerido com 50% de margem sobre o custo já com o rateio do frete/taxas — ajuste livremente."
 							required
 						>
-							<CurrencyField
-								id={field.name}
-								value={field.state.value}
-								onChange={(value) => {
-									field.handleChange(value);
-									setSalePriceTouched(true);
-								}}
-								onBlur={field.handleBlur}
-								invalid={hasError}
-							/>
+							<div className="flex gap-2">
+								<div className="flex-1">
+									<CurrencyField
+										id={priceField.name}
+										value={priceField.state.value}
+										onChange={(value) => {
+											priceField.handleChange(value);
+											setSalePriceTouched(true);
+											if (value > 0) {
+												form.setFieldValue(
+													"margin",
+													Math.round(getMargin(costWithFreight, value) * 10) /
+														10,
+												);
+											}
+										}}
+										onBlur={priceField.handleBlur}
+										invalid={hasError}
+									/>
+								</div>
+								<form.Field name="margin">
+									{(marginField) => (
+										<div className="w-28">
+											<NumberField
+												aria-label="Margem"
+												suffix="%"
+												minValue={0}
+												maxValue={99}
+												value={marginField.state.value}
+												onChange={(value) => {
+													marginField.handleChange(value);
+													setSalePriceTouched(true);
+													if (costWithFreight > 0) {
+														const newPrice = getPriceFromMargin(
+															costWithFreight,
+															value,
+														);
+														form.setFieldValue(
+															"salePrice",
+															Math.round(newPrice * 100) / 100,
+														);
+													}
+												}}
+											/>
+										</div>
+									)}
+								</form.Field>
+							</div>
 							{hasError ? (
 								<FieldError
-									errors={field.state.meta.errors.map((message) => ({
+									errors={priceField.state.meta.errors.map((message) => ({
 										message,
 									}))}
 								/>
@@ -381,7 +430,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 									/un.
 								</p>
 							) : null}
-							{field.state.value > 0 ? (
+							{priceField.state.value > 0 ? (
 								<p className="text-xs text-muted-foreground">
 									Preço no TikTok Shop (comissão de {commission}%):{" "}
 									<span className="font-medium text-foreground">

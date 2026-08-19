@@ -27,6 +27,14 @@ export function getMargin(unitCost: number, salePrice: number): number {
 	return ((salePrice - unitCost) / salePrice) * 100;
 }
 
+export function getPriceFromMargin(
+	cost: number,
+	marginPercent: number,
+): number {
+	if (marginPercent >= 100) return cost;
+	return cost / (1 - marginPercent / 100);
+}
+
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
 /**
