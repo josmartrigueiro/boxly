@@ -5,6 +5,7 @@ import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { HeaderActionsPortal } from "@/components/header-actions-context";
 import { SupplierForm } from "@/components/suppliers/supplier-form";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
@@ -47,6 +48,15 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 	style: "currency",
 	currency: "BRL",
 });
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+	return (
+		<div className="mb-3">
+			<h2 className="text-sm font-medium text-foreground">{children}</h2>
+			<div className="mt-2 border-t border-dashed border-border" />
+		</div>
+	);
+}
 
 type PurchaseOrderFormProps = {
 	onSuccess?: () => void;
@@ -116,81 +126,16 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 				event.stopPropagation();
 				form.handleSubmit();
 			}}
-			className="flex flex-col gap-6"
+			className="flex flex-col gap-8"
 		>
-			<FieldGroup>
-				<form.Field
-					name="supplierId"
-					validators={{
-						onChange: ({ value }) =>
-							!value ? "Selecione um fornecedor" : undefined,
-					}}
-				>
-					{(field) => {
-						const hasError =
-							field.state.meta.isTouched && !field.state.meta.isValid;
-						return (
-							<Field>
-								<div className="flex items-center justify-between">
-									<FieldLabel htmlFor={field.name}>Fornecedor</FieldLabel>
-									<button
-										type="button"
-										onClick={() => setShowNewSupplier((value) => !value)}
-										className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-									>
-										<Plus className="size-3" />
-										Novo fornecedor
-									</button>
-								</div>
-								<Select
-									items={supplierOptions}
-									value={field.state.value}
-									onValueChange={(value) => {
-										field.handleChange(value as string);
-										field.handleBlur();
-									}}
-								>
-									<SelectTrigger id={field.name} aria-invalid={hasError}>
-										<SelectValue placeholder="Selecione um fornecedor" />
-									</SelectTrigger>
-									<SelectContent>
-										{supplierOptions.map((option) => (
-											<SelectItem key={option.value} value={option.value}>
-												{option.label}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								{hasError ? (
-									<FieldError
-										errors={field.state.meta.errors.map((message) => ({
-											message,
-										}))}
-									/>
-								) : null}
-							</Field>
-						);
-					}}
-				</form.Field>
-
-				{showNewSupplier && (
-					<div className="rounded-md border border-border/60 bg-muted/40 p-3">
-						<SupplierForm
-							standalone={false}
-							onSuccess={(supplierId) => {
-								form.setFieldValue("supplierId", supplierId);
-								setShowNewSupplier(false);
-							}}
-						/>
-					</div>
-				)}
-
-				<div className="grid grid-cols-2 gap-4">
+			<section>
+				<SectionHeading>Fornecedor</SectionHeading>
+				<FieldGroup>
 					<form.Field
-						name="orderDate"
+						name="supplierId"
 						validators={{
 							onChange: ({ value }) =>
-								!value ? "Informe a data do pedido" : undefined,
+								!value ? "Selecione um fornecedor" : undefined,
 						}}
 					>
 						{(field) => {
@@ -198,16 +143,36 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 								field.state.meta.isTouched && !field.state.meta.isValid;
 							return (
 								<Field>
-									<FieldLabel htmlFor={field.name}>Data do pedido</FieldLabel>
-									<DateField
-										id={field.name}
+									<div className="flex items-center justify-between">
+										<FieldLabel htmlFor={field.name}>Fornecedor</FieldLabel>
+										<button
+											type="button"
+											onClick={() => setShowNewSupplier((value) => !value)}
+											className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+										>
+											<Plus className="size-3" />
+											Novo fornecedor
+										</button>
+									</div>
+									<Select
+										items={supplierOptions}
 										value={field.state.value}
-										onChange={(value) => {
-											if (value) field.handleChange(value);
+										onValueChange={(value) => {
+											field.handleChange(value as string);
+											field.handleBlur();
 										}}
-										onBlur={field.handleBlur}
-										invalid={hasError}
-									/>
+									>
+										<SelectTrigger id={field.name} aria-invalid={hasError}>
+											<SelectValue placeholder="Selecione um fornecedor" />
+										</SelectTrigger>
+										<SelectContent>
+											{supplierOptions.map((option) => (
+												<SelectItem key={option.value} value={option.value}>
+													{option.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
 									{hasError ? (
 										<FieldError
 											errors={field.state.meta.errors.map((message) => ({
@@ -220,117 +185,172 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 						}}
 					</form.Field>
 
-					<form.Field
-						name="itemsCount"
-						validators={{
-							onBlur: ({ value }) =>
-								!value || value < 1
-									? "Informe a quantidade de itens"
-									: undefined,
-						}}
-					>
-						{(field) => {
-							const hasError =
-								field.state.meta.isTouched && !field.state.meta.isValid;
-							return (
+					{showNewSupplier && (
+						<div className="rounded-md border border-border/60 bg-muted/40 p-3">
+							<SupplierForm
+								standalone={false}
+								onSuccess={(supplierId) => {
+									form.setFieldValue("supplierId", supplierId);
+									setShowNewSupplier(false);
+								}}
+							/>
+						</div>
+					)}
+				</FieldGroup>
+			</section>
+
+			<section>
+				<SectionHeading>Detalhes do pedido</SectionHeading>
+				<FieldGroup>
+					<div className="grid grid-cols-2 gap-4">
+						<form.Field
+							name="orderDate"
+							validators={{
+								onChange: ({ value }) =>
+									!value ? "Informe a data do pedido" : undefined,
+							}}
+						>
+							{(field) => {
+								const hasError =
+									field.state.meta.isTouched && !field.state.meta.isValid;
+								return (
+									<Field>
+										<FieldLabel htmlFor={field.name}>Data do pedido</FieldLabel>
+										<DateField
+											id={field.name}
+											value={field.state.value}
+											onChange={(value) => {
+												if (value) field.handleChange(value);
+											}}
+											onBlur={field.handleBlur}
+											invalid={hasError}
+										/>
+										{hasError ? (
+											<FieldError
+												errors={field.state.meta.errors.map((message) => ({
+													message,
+												}))}
+											/>
+										) : null}
+									</Field>
+								);
+							}}
+						</form.Field>
+
+						<form.Field
+							name="itemsCount"
+							validators={{
+								onBlur: ({ value }) =>
+									!value || value < 1
+										? "Informe a quantidade de itens"
+										: undefined,
+							}}
+						>
+							{(field) => {
+								const hasError =
+									field.state.meta.isTouched && !field.state.meta.isValid;
+								return (
+									<Field>
+										<FieldLabel htmlFor={field.name}>Qtd. de itens</FieldLabel>
+										<NumberField
+											id={field.name}
+											minValue={0}
+											value={field.state.value}
+											onChange={(value) => field.handleChange(value)}
+											onBlur={field.handleBlur}
+											invalid={hasError}
+										/>
+										{hasError ? (
+											<FieldError
+												errors={field.state.meta.errors.map((message) => ({
+													message,
+												}))}
+											/>
+										) : null}
+									</Field>
+								);
+							}}
+						</form.Field>
+					</div>
+
+					<div className="grid grid-cols-2 gap-4">
+						<form.Field
+							name="productsValue"
+							validators={{
+								onBlur: ({ value }) =>
+									!value || value <= 0
+										? "Informe o valor dos produtos"
+										: undefined,
+							}}
+						>
+							{(field) => {
+								const hasError =
+									field.state.meta.isTouched && !field.state.meta.isValid;
+								return (
+									<Field>
+										<FieldLabel htmlFor={field.name}>
+											Valor dos produtos
+										</FieldLabel>
+										<CurrencyField
+											id={field.name}
+											value={field.state.value}
+											onChange={(value) => field.handleChange(value)}
+											onBlur={field.handleBlur}
+											invalid={hasError}
+										/>
+										{hasError ? (
+											<FieldError
+												errors={field.state.meta.errors.map((message) => ({
+													message,
+												}))}
+											/>
+										) : null}
+									</Field>
+								);
+							}}
+						</form.Field>
+
+						<form.Field name="status">
+							{(field) => (
 								<Field>
-									<FieldLabel htmlFor={field.name}>Qtd. de itens</FieldLabel>
-									<NumberField
-										id={field.name}
-										minValue={0}
+									<FieldLabel htmlFor={field.name}>Status</FieldLabel>
+									<Select
+										items={STATUS_OPTIONS}
 										value={field.state.value}
-										onChange={(value) => field.handleChange(value)}
-										onBlur={field.handleBlur}
-										invalid={hasError}
-									/>
-									{hasError ? (
-										<FieldError
-											errors={field.state.meta.errors.map((message) => ({
-												message,
-											}))}
-										/>
-									) : null}
+										onValueChange={(value) =>
+											field.handleChange(
+												value as
+													| "pending"
+													| "in_transit"
+													| "received"
+													| "cancelled",
+											)
+										}
+									>
+										<SelectTrigger id={field.name}>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{STATUS_OPTIONS.map((option) => (
+												<SelectItem key={option.value} value={option.value}>
+													{option.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
 								</Field>
-							);
-						}}
-					</form.Field>
-				</div>
+							)}
+						</form.Field>
+					</div>
+				</FieldGroup>
+			</section>
 
-				<div className="grid grid-cols-2 gap-4">
-					<form.Field
-						name="productsValue"
-						validators={{
-							onBlur: ({ value }) =>
-								!value || value <= 0
-									? "Informe o valor dos produtos"
-									: undefined,
-						}}
-					>
-						{(field) => {
-							const hasError =
-								field.state.meta.isTouched && !field.state.meta.isValid;
-							return (
-								<Field>
-									<FieldLabel htmlFor={field.name}>
-										Valor dos produtos
-									</FieldLabel>
-									<CurrencyField
-										id={field.name}
-										value={field.state.value}
-										onChange={(value) => field.handleChange(value)}
-										onBlur={field.handleBlur}
-										invalid={hasError}
-									/>
-									{hasError ? (
-										<FieldError
-											errors={field.state.meta.errors.map((message) => ({
-												message,
-											}))}
-										/>
-									) : null}
-								</Field>
-							);
-						}}
-					</form.Field>
-
-					<form.Field name="status">
-						{(field) => (
-							<Field>
-								<FieldLabel htmlFor={field.name}>Status</FieldLabel>
-								<Select
-									items={STATUS_OPTIONS}
-									value={field.state.value}
-									onValueChange={(value) =>
-										field.handleChange(
-											value as
-												| "pending"
-												| "in_transit"
-												| "received"
-												| "cancelled",
-										)
-									}
-								>
-									<SelectTrigger id={field.name}>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										{STATUS_OPTIONS.map((option) => (
-											<SelectItem key={option.value} value={option.value}>
-												{option.label}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</Field>
-						)}
-					</form.Field>
-				</div>
-
+			<section>
+				<SectionHeading>Impostos e taxas</SectionHeading>
 				<form.Field name="charges" mode="array">
 					{(chargesField) => (
-						<div className="flex flex-col gap-3 rounded-md border border-border/60 p-3">
-							<div className="flex items-center justify-between">
-								<FieldLabel>Impostos e taxas</FieldLabel>
+						<div className="flex flex-col gap-3">
+							<div className="flex items-center justify-end">
 								<button
 									type="button"
 									onClick={() =>
@@ -471,26 +491,27 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 											)}
 										</form.Field>
 
-										<Button
+										<button
 											type="button"
-											variant="ghost"
-											size="icon"
 											onClick={() => chargesField.removeValue(index)}
 											aria-label="Remover taxa"
+											className="flex h-8 w-6 shrink-0 items-center justify-center text-muted-foreground/60 outline-none transition-colors hover:text-destructive"
 										>
-											<X className="size-4" />
-										</Button>
+											<X className="size-3.5" />
+										</button>
 									</div>
 								))
 							)}
 						</div>
 					)}
 				</form.Field>
+			</section>
 
+			<section>
+				<SectionHeading>Observações</SectionHeading>
 				<form.Field name="notes">
 					{(field) => (
 						<Field>
-							<FieldLabel htmlFor={field.name}>Observações</FieldLabel>
 							<Textarea
 								id={field.name}
 								value={field.state.value}
@@ -499,7 +520,7 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 						</Field>
 					)}
 				</form.Field>
-			</FieldGroup>
+			</section>
 
 			<form.Subscribe
 				selector={(state) => [state.values.productsValue, state.values.charges]}
@@ -529,13 +550,16 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 				selector={(state) => [state.canSubmit, state.isSubmitting]}
 			>
 				{([canSubmit, isSubmitting]) => (
-					<Button
-						type="submit"
-						disabled={!canSubmit || isSubmitting}
-						className="w-fit"
-					>
-						{isSubmitting ? "Salvando..." : "Registrar pedido"}
-					</Button>
+					<HeaderActionsPortal>
+						<Button
+							type="button"
+							size="sm"
+							onClick={() => form.handleSubmit()}
+							disabled={!canSubmit || isSubmitting}
+						>
+							{isSubmitting ? "Salvando..." : "Registrar pedido"}
+						</Button>
+					</HeaderActionsPortal>
 				)}
 			</form.Subscribe>
 		</form>

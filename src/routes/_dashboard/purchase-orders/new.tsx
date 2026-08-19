@@ -25,14 +25,9 @@ function NewPurchaseOrderPage() {
 						Voltar para Pedidos
 					</Link>
 
-					<div>
-						<h2 className="text-lg font-semibold text-foreground">
-							Novo pedido de compra
-						</h2>
-						<p className="text-sm text-muted-foreground">
-							Registre o pedido que você fez num fornecedor/distribuidora.
-						</p>
-					</div>
+					<p className="text-sm text-muted-foreground">
+						Registre o pedido que você fez num fornecedor/distribuidora.
+					</p>
 
 					<PurchaseOrderForm
 						onSuccess={() => navigate({ to: "/purchase-orders" })}

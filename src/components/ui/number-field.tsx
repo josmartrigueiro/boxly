@@ -32,14 +32,14 @@ function NumberField({
 				<Group
 					aria-invalid={invalid || undefined}
 					className={cn(
-						"relative inline-flex h-9 w-full items-center overflow-hidden rounded-sm border border-input bg-transparent text-sm outline-none transition-colors data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+						"relative inline-flex h-8 w-full items-center overflow-hidden rounded-sm border border-input bg-transparent text-sm outline-none transition-colors data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
 						className,
 					)}
 				>
 					<AriaInput
 						id={id}
 						placeholder={placeholder}
-						className="w-full flex-1 bg-transparent px-3 py-1.5 text-foreground tabular-nums outline-none placeholder:text-muted-foreground"
+						className="w-full flex-1 bg-transparent px-2.5 py-1 text-foreground tabular-nums outline-none placeholder:text-muted-foreground"
 					/>
 					{suffix ? (
 						<span className="pr-2 text-sm text-muted-foreground select-none">
@@ -49,13 +49,13 @@ function NumberField({
 					<div className="flex h-full shrink-0 flex-col border-l border-input">
 						<Button
 							slot="increment"
-							className="flex h-1/2 w-7 flex-1 items-center justify-center border-b border-input text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+							className="flex h-1/2 w-6 flex-1 items-center justify-center border-b border-input text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
 						>
 							<ChevronUp aria-hidden="true" className="size-3" />
 						</Button>
 						<Button
 							slot="decrement"
-							className="flex h-1/2 w-7 flex-1 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+							className="flex h-1/2 w-6 flex-1 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
 						>
 							<ChevronDown aria-hidden="true" className="size-3" />
 						</Button>

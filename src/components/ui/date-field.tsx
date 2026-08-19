@@ -43,7 +43,7 @@ function DateField<T extends DateValue>({
 					id={id}
 					aria-invalid={invalid || undefined}
 					className={cn(
-						"relative inline-flex h-9 w-full items-center gap-2 overflow-hidden rounded-sm border border-input bg-transparent px-3 py-1.5 text-sm text-foreground outline-none transition-colors data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+						"relative inline-flex h-8 w-full items-center gap-2 overflow-hidden rounded-sm border border-input bg-transparent px-2.5 py-1 text-sm text-foreground outline-none transition-colors data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
 						className,
 					)}
 				>
