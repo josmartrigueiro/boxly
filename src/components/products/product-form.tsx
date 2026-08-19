@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { HeaderActionsPortal } from "@/components/header-actions-context";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { FieldError } from "@/components/ui/field";
 import { FieldRow, FieldRowDivider } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,12 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 		value: order.id,
 		label: `${order.supplier.name} — ${dateFormatter.format(new Date(order.orderDate))}`,
 	}));
+
+	const categoryOptions = Array.from(
+		new Set(existingProducts.map((product) => product.category)),
+	)
+		.sort((a, b) => a.localeCompare(b))
+		.map((category) => ({ id: category, label: category }));
 
 	const mutation = useMutation({
 		mutationFn: createProduct,
@@ -212,16 +219,17 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 						<FieldRow
 							label="Categoria/Linha"
 							htmlFor={field.name}
-							description="Agrupamento usado no filtro da listagem e na geração do código"
+							description="Agrupamento usado no filtro da listagem e na geração do código. Escolha uma existente ou digite uma nova."
 							required
 						>
-							<Input
+							<Combobox
 								id={field.name}
+								items={categoryOptions}
 								placeholder="Ex: Borracha Decorada"
 								value={field.state.value}
+								onValueChange={(value) => field.handleChange(value)}
 								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-								aria-invalid={hasError}
+								invalid={hasError}
 							/>
 							{hasError ? (
 								<FieldError
