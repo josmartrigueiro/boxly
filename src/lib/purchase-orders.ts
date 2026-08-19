@@ -4,7 +4,7 @@ import { desc } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "#/db";
-import { purchaseOrders } from "#/db/schema";
+import { purchaseOrderCharges, purchaseOrders } from "#/db/schema";
 import { auth } from "#/lib/auth";
 
 export const purchaseOrdersQueryKey = ["purchase-orders"] as const;
@@ -16,21 +16,28 @@ const purchaseOrderStatusValues = [
 	"cancelled",
 ] as const;
 
+const chargeKindValues = ["percentage", "fixed"] as const;
+
+const chargeSchema = z.object({
+	name: z.string().min(1, "Informe o nome da taxa"),
+	kind: z.enum(chargeKindValues),
+	value: z.coerce.number().min(0, "Informe um valor válido"),
+});
+
 const createPurchaseOrderSchema = z.object({
 	supplierId: z.string().uuid("Selecione um fornecedor"),
 	orderDate: z.string().min(1, "Informe a data do pedido"),
-	itemsCount: z.coerce.number().int().min(0),
-	productsValue: z.coerce.number().min(0),
-	freightValue: z.coerce.number().min(0).default(0),
-	taxValue: z.coerce.number().min(0).default(0),
+	itemsCount: z.coerce.number().int().min(1, "Informe a quantidade de itens"),
+	productsValue: z.coerce.number().min(0.01, "Informe o valor dos produtos"),
 	status: z.enum(purchaseOrderStatusValues).default("pending"),
 	notes: z.string().optional(),
+	charges: z.array(chargeSchema).default([]),
 });
 
 export const listPurchaseOrders = createServerFn({ method: "GET" }).handler(
 	async () => {
 		return db.query.purchaseOrders.findMany({
-			with: { supplier: true },
+			with: { supplier: true, charges: true },
 			orderBy: [desc(purchaseOrders.orderDate)],
 		});
 	},
@@ -52,13 +59,22 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
 				orderDate: new Date(data.orderDate),
 				itemsCount: data.itemsCount,
 				productsValue: data.productsValue.toFixed(2),
-				freightValue: data.freightValue.toFixed(2),
-				taxValue: data.taxValue.toFixed(2),
 				status: data.status,
 				notes: data.notes || null,
 				createdById: session.user.id,
 			})
 			.returning();
+
+		if (data.charges.length > 0) {
+			await db.insert(purchaseOrderCharges).values(
+				data.charges.map((charge) => ({
+					purchaseOrderId: order.id,
+					name: charge.name,
+					kind: charge.kind,
+					value: charge.value.toFixed(2),
+				})),
+			);
+		}
 
 		return order;
 	});

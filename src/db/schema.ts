@@ -124,12 +124,6 @@ export const purchaseOrders = pgTable("purchase_orders", {
 		precision: 10,
 		scale: 2,
 	}).notNull(),
-	freightValue: numeric("freight_value", { precision: 10, scale: 2 })
-		.notNull()
-		.default("0"),
-	taxValue: numeric("tax_value", { precision: 10, scale: 2 })
-		.notNull()
-		.default("0"),
 	status: purchaseOrderStatusEnum("status").notNull().default("pending"),
 	notes: text("notes"),
 	createdById: text("created_by_id").references(() => user.id, {
@@ -142,17 +136,47 @@ export const purchaseOrders = pgTable("purchase_orders", {
 		.notNull(),
 });
 
+export const purchaseOrderChargeKindEnum = pgEnum(
+	"purchase_order_charge_kind",
+	["percentage", "fixed"],
+);
+
+export const purchaseOrderCharges = pgTable("purchase_order_charges", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	purchaseOrderId: uuid("purchase_order_id")
+		.notNull()
+		.references(() => purchaseOrders.id, { onDelete: "cascade" }),
+	name: text("name").notNull(),
+	kind: purchaseOrderChargeKindEnum("kind").notNull().default("fixed"),
+	value: numeric("value", { precision: 10, scale: 2 }).notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const supplierRelations = relations(suppliers, ({ many }) => ({
 	purchaseOrders: many(purchaseOrders),
 }));
 
-export const purchaseOrderRelations = relations(purchaseOrders, ({ one }) => ({
-	supplier: one(suppliers, {
-		fields: [purchaseOrders.supplierId],
-		references: [suppliers.id],
+export const purchaseOrderRelations = relations(
+	purchaseOrders,
+	({ one, many }) => ({
+		supplier: one(suppliers, {
+			fields: [purchaseOrders.supplierId],
+			references: [suppliers.id],
+		}),
+		createdBy: one(user, {
+			fields: [purchaseOrders.createdById],
+			references: [user.id],
+		}),
+		charges: many(purchaseOrderCharges),
 	}),
-	createdBy: one(user, {
-		fields: [purchaseOrders.createdById],
-		references: [user.id],
+);
+
+export const purchaseOrderChargeRelations = relations(
+	purchaseOrderCharges,
+	({ one }) => ({
+		purchaseOrder: one(purchaseOrders, {
+			fields: [purchaseOrderCharges.purchaseOrderId],
+			references: [purchaseOrders.id],
+		}),
 	}),
-}));
+);
