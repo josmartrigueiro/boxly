@@ -18,6 +18,7 @@ import { Route as DashboardPurchaseOrdersIndexRouteImport } from './routes/_dash
 import { Route as DashboardInventoryIndexRouteImport } from './routes/_dashboard/inventory/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DashboardPurchaseOrdersNewRouteImport } from './routes/_dashboard/purchase-orders/new'
+import { Route as DashboardInventoryNewRouteImport } from './routes/_dashboard/inventory/new'
 import { Route as DashboardInventoryProductIdRouteImport } from './routes/_dashboard/inventory/$productId'
 
 const SignInRoute = SignInRouteImport.update({
@@ -66,6 +67,11 @@ const DashboardPurchaseOrdersNewRoute =
     path: '/purchase-orders/new',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardInventoryNewRoute = DashboardInventoryNewRouteImport.update({
+  id: '/inventory/new',
+  path: '/inventory/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardInventoryProductIdRoute =
   DashboardInventoryProductIdRouteImport.update({
     id: '/inventory/$productId',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof DashboardSettingsRoute
   '/suppliers': typeof DashboardSuppliersRoute
   '/inventory/$productId': typeof DashboardInventoryProductIdRoute
+  '/inventory/new': typeof DashboardInventoryNewRoute
   '/purchase-orders/new': typeof DashboardPurchaseOrdersNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/inventory/': typeof DashboardInventoryIndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/suppliers': typeof DashboardSuppliersRoute
   '/': typeof DashboardIndexRoute
   '/inventory/$productId': typeof DashboardInventoryProductIdRoute
+  '/inventory/new': typeof DashboardInventoryNewRoute
   '/purchase-orders/new': typeof DashboardPurchaseOrdersNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/inventory': typeof DashboardInventoryIndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/_dashboard/suppliers': typeof DashboardSuppliersRoute
   '/_dashboard/': typeof DashboardIndexRoute
   '/_dashboard/inventory/$productId': typeof DashboardInventoryProductIdRoute
+  '/_dashboard/inventory/new': typeof DashboardInventoryNewRoute
   '/_dashboard/purchase-orders/new': typeof DashboardPurchaseOrdersNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_dashboard/inventory/': typeof DashboardInventoryIndexRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/suppliers'
     | '/inventory/$productId'
+    | '/inventory/new'
     | '/purchase-orders/new'
     | '/api/auth/$'
     | '/inventory/'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/'
     | '/inventory/$productId'
+    | '/inventory/new'
     | '/purchase-orders/new'
     | '/api/auth/$'
     | '/inventory'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/_dashboard/suppliers'
     | '/_dashboard/'
     | '/_dashboard/inventory/$productId'
+    | '/_dashboard/inventory/new'
     | '/_dashboard/purchase-orders/new'
     | '/api/auth/$'
     | '/_dashboard/inventory/'
@@ -216,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardPurchaseOrdersNewRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/inventory/new': {
+      id: '/_dashboard/inventory/new'
+      path: '/inventory/new'
+      fullPath: '/inventory/new'
+      preLoaderRoute: typeof DashboardInventoryNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/inventory/$productId': {
       id: '/_dashboard/inventory/$productId'
       path: '/inventory/$productId'
@@ -231,6 +250,7 @@ interface DashboardRouteChildren {
   DashboardSuppliersRoute: typeof DashboardSuppliersRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardInventoryProductIdRoute: typeof DashboardInventoryProductIdRoute
+  DashboardInventoryNewRoute: typeof DashboardInventoryNewRoute
   DashboardPurchaseOrdersNewRoute: typeof DashboardPurchaseOrdersNewRoute
   DashboardInventoryIndexRoute: typeof DashboardInventoryIndexRoute
   DashboardPurchaseOrdersIndexRoute: typeof DashboardPurchaseOrdersIndexRoute
@@ -241,6 +261,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardSuppliersRoute: DashboardSuppliersRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardInventoryProductIdRoute: DashboardInventoryProductIdRoute,
+  DashboardInventoryNewRoute: DashboardInventoryNewRoute,
   DashboardPurchaseOrdersNewRoute: DashboardPurchaseOrdersNewRoute,
   DashboardInventoryIndexRoute: DashboardInventoryIndexRoute,
   DashboardPurchaseOrdersIndexRoute: DashboardPurchaseOrdersIndexRoute,

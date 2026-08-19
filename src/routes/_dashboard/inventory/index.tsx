@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Package, PackageX, Plus, Wallet } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
@@ -6,7 +7,7 @@ import { MetricCard } from "@/components/metric-card";
 import { ProductsTable } from "@/components/products/products-table";
 import { Button } from "@/components/ui/button";
 import { useLowStockThreshold } from "@/hooks/use-low-stock-threshold";
-import { getStockStatus, MOCK_PRODUCTS } from "@/lib/mock-products";
+import { getStockStatus, listProducts, productsQueryKey } from "@/lib/products";
 
 export const Route = createFileRoute("/_dashboard/inventory/")({
 	component: EstoquePage,
@@ -19,22 +20,31 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 
 function EstoquePage() {
 	const { threshold } = useLowStockThreshold();
-	const total = MOCK_PRODUCTS.length;
-	const baixo = MOCK_PRODUCTS.filter(
+	const { data: products = [] } = useQuery({
+		queryKey: productsQueryKey,
+		queryFn: () => listProducts(),
+	});
+
+	const total = products.length;
+	const baixo = products.filter(
 		(product) => getStockStatus(product.quantity, threshold) === "baixo",
 	).length;
-	const esgotado = MOCK_PRODUCTS.filter(
+	const esgotado = products.filter(
 		(product) => getStockStatus(product.quantity, threshold) === "esgotado",
 	).length;
-	const valorEmEstoque = MOCK_PRODUCTS.reduce(
-		(total, product) => total + product.quantity * product.unitCost,
+	const valorEmEstoque = products.reduce(
+		(sum, product) => sum + product.quantity * Number(product.unitCost),
 		0,
 	);
 
 	return (
 		<>
 			<AppHeader title="Estoque">
-				<Button size="sm" disabled className="gap-2">
+				<Button
+					size="sm"
+					className="gap-2"
+					render={<Link to="/inventory/new" />}
+				>
 					<Plus className="size-4" />
 					<span className="hidden xl:inline">Novo produto</span>
 				</Button>

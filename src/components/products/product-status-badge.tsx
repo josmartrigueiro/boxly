@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { useLowStockThreshold } from "@/hooks/use-low-stock-threshold";
-import { getStockStatus } from "@/lib/mock-products";
+import { getStockStatus } from "@/lib/products";
 
 export function ProductStatusBadge({ quantity }: { quantity: number }) {
 	const { threshold } = useLowStockThreshold();

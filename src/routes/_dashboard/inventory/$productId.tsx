@@ -1,10 +1,21 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, History, Package } from "lucide-react";
+import { ArrowLeft, History, Package, Plus } from "lucide-react";
+import { useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { ProductStatusBadge } from "@/components/products/product-status-badge";
+import { StockMovementForm } from "@/components/products/stock-movement-form";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	Table,
 	TableBody,
@@ -13,15 +24,14 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { getMargin, getProduct, productQueryKey } from "@/lib/products";
 import {
-	getLotById,
-	getMovementsForProduct,
-	type StockMovementType,
-} from "@/lib/mock-inventory";
-import { getMargin, MOCK_PRODUCTS } from "@/lib/mock-products";
+	listMovementsForProduct,
+	stockMovementsQueryKey,
+} from "@/lib/stock-movements";
 
 const MOVEMENT_LABELS: Record<
-	StockMovementType,
+	"entrada" | "saida" | "ajuste",
 	{ label: string; variant: "secondary" | "warning" | "outline" }
 > = {
 	entrada: { label: "Entrada", variant: "secondary" },
@@ -38,9 +48,32 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 	currency: "BRL",
 });
 
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
+
 function ProductDetailPage() {
 	const { productId } = Route.useParams();
-	const product = MOCK_PRODUCTS.find((item) => item.id === productId);
+	const [movementDialogOpen, setMovementDialogOpen] = useState(false);
+
+	const { data: product, isLoading } = useQuery({
+		queryKey: productQueryKey(productId),
+		queryFn: () => getProduct({ data: { id: productId } }),
+		retry: false,
+	});
+
+	const { data: movements = [] } = useQuery({
+		queryKey: stockMovementsQueryKey(productId),
+		queryFn: () => listMovementsForProduct({ data: { productId } }),
+		enabled: !!product,
+	});
+
+	if (isLoading) {
+		return (
+			<>
+				<AppHeader title="Carregando..." />
+				<div className="w-full flex-1 p-4" />
+			</>
+		);
+	}
 
 	if (!product) {
 		return (
@@ -48,7 +81,7 @@ function ProductDetailPage() {
 				<AppHeader title="Produto não encontrado" />
 				<div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
 					<p className="text-sm text-muted-foreground">
-						Não encontramos nenhum produto com o código "{productId}".
+						Não encontramos nenhum produto com esse código.
 					</p>
 					<Link
 						to="/inventory"
@@ -61,14 +94,37 @@ function ProductDetailPage() {
 		);
 	}
 
-	const lot = getLotById(product.lotId);
-	const margin = getMargin(product.unitCost, product.salePrice);
-	const profit = product.salePrice - product.unitCost;
-	const movements = getMovementsForProduct(product);
+	const unitCost = Number(product.unitCost);
+	const salePrice = Number(product.salePrice);
+	const margin = getMargin(unitCost, salePrice);
+	const profit = salePrice - unitCost;
 
 	return (
 		<>
-			<AppHeader title={product.name} />
+			<AppHeader title={product.name}>
+				<Dialog open={movementDialogOpen} onOpenChange={setMovementDialogOpen}>
+					<Button
+						size="sm"
+						className="gap-2"
+						onClick={() => setMovementDialogOpen(true)}
+					>
+						<Plus className="size-4" />
+						<span className="hidden xl:inline">Nova movimentação</span>
+					</Button>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Registrar movimentação</DialogTitle>
+							<DialogDescription>
+								Entrada, saída ou ajuste de contagem para {product.name}.
+							</DialogDescription>
+						</DialogHeader>
+						<StockMovementForm
+							productId={product.id}
+							onSuccess={() => setMovementDialogOpen(false)}
+						/>
+					</DialogContent>
+				</Dialog>
+			</AppHeader>
 
 			<div className="w-full flex-1 space-y-6 overflow-y-auto p-4">
 				<Link
@@ -95,12 +151,15 @@ function ProductDetailPage() {
 							<div>
 								<p className="font-medium text-foreground">{product.name}</p>
 								<p className="font-mono text-xs text-muted-foreground">
-									{product.id}
+									{product.sku}
 								</p>
 							</div>
 							<div className="flex flex-wrap items-center gap-2">
 								<Badge variant="outline">{product.category}</Badge>
 								<ProductStatusBadge quantity={product.quantity} />
+								{product.status === "inactive" ? (
+									<Badge variant="destructive">Inativo</Badge>
+								) : null}
 							</div>
 							<p className="text-sm text-muted-foreground">
 								Qtd. atual:{" "}
@@ -108,6 +167,19 @@ function ProductDetailPage() {
 									{product.quantity}
 								</span>
 							</p>
+							{product.saleLink ? (
+								<a
+									href={product.saleLink}
+									target="_blank"
+									rel="noreferrer"
+									className="block text-sm text-primary hover:underline"
+								>
+									Link de venda
+								</a>
+							) : null}
+							{product.notes ? (
+								<p className="text-sm text-muted-foreground">{product.notes}</p>
+							) : null}
 						</CardContent>
 					</Card>
 
@@ -121,13 +193,13 @@ function ProductDetailPage() {
 							<div className="flex items-center justify-between">
 								<span className="text-muted-foreground">Custo unit.</span>
 								<span className="font-mono tabular-nums text-foreground">
-									{currencyFormatter.format(product.unitCost)}
+									{currencyFormatter.format(unitCost)}
 								</span>
 							</div>
 							<div className="flex items-center justify-between">
 								<span className="text-muted-foreground">Preço de venda</span>
 								<span className="font-mono tabular-nums text-foreground">
-									{currencyFormatter.format(product.salePrice)}
+									{currencyFormatter.format(salePrice)}
 								</span>
 							</div>
 							<div className="flex items-center justify-between">
@@ -148,52 +220,48 @@ function ProductDetailPage() {
 					<Card className="shadow-xs">
 						<CardHeader>
 							<CardTitle className="text-sm font-medium text-muted-foreground">
-								Fornecedor e lote
+								Fornecedor e pedido
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-2 text-sm">
-							{lot ? (
+							{product.purchaseOrder ? (
 								<>
 									<div className="flex items-center justify-between">
-										<span className="text-muted-foreground">Lote</span>
-										<span className="font-mono text-foreground">{lot.id}</span>
-									</div>
-									<div className="flex items-center justify-between">
 										<span className="text-muted-foreground">Fornecedor</span>
-										<span className="text-foreground">{lot.supplier}</span>
-									</div>
-									<div className="flex items-center justify-between">
-										<span className="text-muted-foreground">Plataforma</span>
-										<span className="text-foreground">{lot.platform}</span>
+										<span className="text-foreground">
+											{product.purchaseOrder.supplier.name}
+										</span>
 									</div>
 									<div className="flex items-center justify-between">
 										<span className="text-muted-foreground">
-											Data da compra
+											Data do pedido
 										</span>
 										<span className="font-mono text-foreground">
-											{lot.purchaseDate}
+											{dateFormatter.format(
+												new Date(product.purchaseOrder.orderDate),
+											)}
 										</span>
 									</div>
 									<div className="flex items-center justify-between">
-										<span className="text-muted-foreground">Frete do lote</span>
+										<span className="text-muted-foreground">
+											Valor dos produtos
+										</span>
 										<span className="font-mono tabular-nums text-foreground">
-											{currencyFormatter.format(lot.freightValue)}
+											{currencyFormatter.format(
+												Number(product.purchaseOrder.productsValue),
+											)}
 										</span>
 									</div>
-									<div className="flex items-center justify-between">
-										<span className="text-muted-foreground">Taxas do lote</span>
-										<span className="font-mono tabular-nums text-foreground">
-											{currencyFormatter.format(lot.feesValue)}
-										</span>
-									</div>
-									<p className="pt-1 text-xs text-muted-foreground/80">
-										Frete e taxas são do lote inteiro ({lot.itemsCount} itens),
-										rateados entre todos os produtos comprados junto.
-									</p>
+									<Link
+										to="/purchase-orders"
+										className="inline-block pt-1 text-xs text-primary hover:underline"
+									>
+										Ver pedidos de compra
+									</Link>
 								</>
 							) : (
 								<p className="text-muted-foreground">
-									Nenhum lote associado a este produto.
+									Nenhum pedido associado a este produto.
 								</p>
 							)}
 						</CardContent>
@@ -212,46 +280,54 @@ function ProductDetailPage() {
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className="overflow-hidden rounded-lg border border-border/60">
-							<Table>
-								<TableHeader>
-									<TableRow className="bg-primary/5">
-										<TableHead className="tracking-wide">Data</TableHead>
-										<TableHead className="tracking-wide">Tipo</TableHead>
-										<TableHead className="tracking-wide">Motivo</TableHead>
-										<TableHead className="text-end tracking-wide">
-											Quantidade
-										</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{movements.map((movement) => {
-										const config = MOVEMENT_LABELS[movement.type];
-										const signedQuantity =
-											movement.type === "entrada"
-												? `+${movement.quantity}`
-												: `-${movement.quantity}`;
+						{movements.length === 0 ? (
+							<p className="py-8 text-center text-sm text-muted-foreground">
+								Nenhuma movimentação registrada ainda.
+							</p>
+						) : (
+							<div className="overflow-hidden rounded-lg border border-border/60">
+								<Table>
+									<TableHeader>
+										<TableRow className="bg-primary/5">
+											<TableHead className="tracking-wide">Data</TableHead>
+											<TableHead className="tracking-wide">Tipo</TableHead>
+											<TableHead className="tracking-wide">Motivo</TableHead>
+											<TableHead className="text-end tracking-wide">
+												Quantidade
+											</TableHead>
+										</TableRow>
+									</TableHeader>
+									<TableBody>
+										{movements.map((movement) => {
+											const config = MOVEMENT_LABELS[movement.type];
+											const signedQuantity =
+												movement.quantity > 0
+													? `+${movement.quantity}`
+													: String(movement.quantity);
 
-										return (
-											<TableRow key={movement.id}>
-												<TableCell className="font-mono text-sm text-muted-foreground">
-													{movement.date}
-												</TableCell>
-												<TableCell>
-													<Badge variant={config.variant}>{config.label}</Badge>
-												</TableCell>
-												<TableCell className="text-sm text-muted-foreground">
-													{movement.reason}
-												</TableCell>
-												<TableCell className="text-end font-mono text-sm font-semibold tabular-nums text-foreground">
-													{signedQuantity}
-												</TableCell>
-											</TableRow>
-										);
-									})}
-								</TableBody>
-							</Table>
-						</div>
+											return (
+												<TableRow key={movement.id}>
+													<TableCell className="font-mono text-sm text-muted-foreground">
+														{dateFormatter.format(new Date(movement.date))}
+													</TableCell>
+													<TableCell>
+														<Badge variant={config.variant}>
+															{config.label}
+														</Badge>
+													</TableCell>
+													<TableCell className="text-sm text-muted-foreground">
+														{movement.reason || "—"}
+													</TableCell>
+													<TableCell className="text-end font-mono text-sm font-semibold tabular-nums text-foreground">
+														{signedQuantity}
+													</TableCell>
+												</TableRow>
+											);
+										})}
+									</TableBody>
+								</Table>
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			</div>
