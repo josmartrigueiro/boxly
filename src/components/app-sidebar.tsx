@@ -32,6 +32,11 @@ const NAV_ITEMS = [
 	{ to: "/settings", label: "Configurações", icon: Settings },
 ] as const;
 
+function isNavItemActive(currentPath: string, to: string) {
+	if (to === "/") return currentPath === "/";
+	return currentPath === to || currentPath.startsWith(`${to}/`);
+}
+
 function getInitials(name: string) {
 	return name
 		.split(" ")
@@ -77,7 +82,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 							{NAV_ITEMS.map((item) => (
 								<SidebarMenuItem key={item.to}>
 									<SidebarMenuButton
-										isActive={currentPath === item.to}
+										isActive={isNavItemActive(currentPath, item.to)}
 										render={<Link to={item.to} />}
 									>
 										<item.icon className="size-4" />
