@@ -92,7 +92,7 @@ export function ProductsTable() {
 					</span>
 					<CardTitle className="text-sm font-medium text-muted-foreground">
 						Listagem de produtos
-						<Badge className="ml-2 font-mono tabular-nums">
+						<Badge className="ml-2 size-6 rounded-full border-border/60 bg-muted p-0.5 font-mono text-xs tabular-nums text-muted-foreground shadow-sm">
 							{filtered.length}
 						</Badge>
 					</CardTitle>
