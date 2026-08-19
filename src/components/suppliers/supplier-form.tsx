@@ -3,7 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "@/components/ui/field";
+import { FieldRow, FieldRowDivider } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
 import { createSupplier, suppliersQueryKey } from "@/lib/suppliers";
 
@@ -44,20 +50,133 @@ export function SupplierForm({
 		},
 	});
 
-	const Wrapper = standalone ? "form" : "div";
+	const submitButton = (
+		<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+			{([canSubmit, isSubmitting]) => (
+				<Button
+					type={standalone ? "submit" : "button"}
+					onClick={standalone ? undefined : () => form.handleSubmit()}
+					disabled={!canSubmit || isSubmitting}
+					size="sm"
+					className="w-fit"
+				>
+					{isSubmitting ? "Salvando..." : "Salvar fornecedor"}
+				</Button>
+			)}
+		</form.Subscribe>
+	);
+
+	if (!standalone) {
+		return (
+			<div className="flex flex-col gap-4">
+				<form.Field
+					name="name"
+					validators={{
+						onBlur: ({ value }) => (!value ? "Nome é obrigatório" : undefined),
+					}}
+				>
+					{(field) => {
+						const hasError =
+							field.state.meta.isTouched && !field.state.meta.isValid;
+						return (
+							<FieldRow
+								label="Nome"
+								htmlFor={field.name}
+								description="Nome do fornecedor/distribuidora"
+								required
+							>
+								<Input
+									id={field.name}
+									placeholder="Ex: Star, Tris, Mabel Atacado"
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(event) => field.handleChange(event.target.value)}
+									aria-invalid={hasError}
+								/>
+								{hasError ? (
+									<FieldError
+										errors={field.state.meta.errors.map((message) => ({
+											message,
+										}))}
+									/>
+								) : null}
+							</FieldRow>
+						);
+					}}
+				</form.Field>
+
+				<FieldRowDivider />
+
+				<form.Field name="platform">
+					{(field) => (
+						<FieldRow
+							label="Plataforma/Canal"
+							htmlFor={field.name}
+							description="Onde você compra deste fornecedor"
+						>
+							<Input
+								id={field.name}
+								placeholder="Ex: Site Star, Shopee"
+								value={field.state.value}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+						</FieldRow>
+					)}
+				</form.Field>
+
+				<FieldRowDivider />
+
+				<form.Field name="location">
+					{(field) => (
+						<FieldRow
+							label="Localização"
+							htmlFor={field.name}
+							description="Cidade e estado do fornecedor"
+						>
+							<Input
+								id={field.name}
+								placeholder="Ex: São Paulo, SP"
+								value={field.state.value}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+						</FieldRow>
+					)}
+				</form.Field>
+
+				<FieldRowDivider />
+
+				<form.Field name="phone">
+					{(field) => (
+						<FieldRow
+							label="Telefone/WhatsApp"
+							htmlFor={field.name}
+							description="Contato direto com o fornecedor"
+						>
+							<Input
+								id={field.name}
+								placeholder="Ex: (11) 99999-9999"
+								value={field.state.value}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+						</FieldRow>
+					)}
+				</form.Field>
+
+				<FieldRowDivider />
+
+				{submitButton}
+			</div>
+		);
+	}
 
 	return (
-		<Wrapper
-			{...(standalone
-				? {
-						noValidate: true,
-						onSubmit: (event: React.FormEvent) => {
-							event.preventDefault();
-							event.stopPropagation();
-							form.handleSubmit();
-						},
-					}
-				: {})}
+		<form
+			noValidate
+			onSubmit={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				form.handleSubmit();
+			}}
 			className="flex flex-col gap-4"
 		>
 			<FieldGroup>
@@ -83,9 +202,11 @@ export function SupplierForm({
 									aria-invalid={hasError}
 								/>
 								{hasError ? (
-									<p className="text-xs text-destructive" role="alert">
-										{field.state.meta.errors.join(", ")}
-									</p>
+									<FieldError
+										errors={field.state.meta.errors.map((message) => ({
+											message,
+										}))}
+									/>
 								) : null}
 							</Field>
 						);
@@ -140,20 +261,7 @@ export function SupplierForm({
 				</form.Field>
 			</FieldGroup>
 
-			<form.Subscribe
-				selector={(state) => [state.canSubmit, state.isSubmitting]}
-			>
-				{([canSubmit, isSubmitting]) => (
-					<Button
-						type={standalone ? "submit" : "button"}
-						onClick={standalone ? undefined : () => form.handleSubmit()}
-						disabled={!canSubmit || isSubmitting}
-						className="w-fit"
-					>
-						{isSubmitting ? "Salvando..." : "Salvar fornecedor"}
-					</Button>
-				)}
-			</form.Subscribe>
-		</Wrapper>
+			{submitButton}
+		</form>
 	);
 }

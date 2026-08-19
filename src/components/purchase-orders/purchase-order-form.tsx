@@ -126,50 +126,53 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 					const hasError =
 						field.state.meta.isTouched && !field.state.meta.isValid;
 					return (
-						<FieldRow
-							label="Fornecedor"
-							htmlFor={field.name}
-							description="Selecione o fornecedor/distribuidora responsável por este pedido"
-							required
-						>
-							<div className="flex items-center justify-end">
-								<button
-									type="button"
-									onClick={() => setShowNewSupplier((value) => !value)}
-									className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-								>
-									<Plus className="size-3" />
-									Novo fornecedor
-								</button>
-							</div>
-							<Select
-								items={supplierOptions}
-								value={field.state.value}
-								onValueChange={(value) => {
-									field.handleChange(value as string);
-									field.handleBlur();
-								}}
+						<>
+							<FieldRow
+								label="Fornecedor"
+								htmlFor={field.name}
+								description="Selecione o fornecedor/distribuidora responsável por este pedido"
+								required
 							>
-								<SelectTrigger id={field.name} aria-invalid={hasError}>
-									<SelectValue placeholder="Selecione um fornecedor" />
-								</SelectTrigger>
-								<SelectContent>
-									{supplierOptions.map((option) => (
-										<SelectItem key={option.value} value={option.value}>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							{hasError ? (
-								<FieldError
-									errors={field.state.meta.errors.map((message) => ({
-										message,
-									}))}
-								/>
-							) : null}
+								<div className="flex items-center justify-end">
+									<button
+										type="button"
+										onClick={() => setShowNewSupplier((value) => !value)}
+										className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+									>
+										<Plus className="size-3" />
+										Novo fornecedor
+									</button>
+								</div>
+								<Select
+									items={supplierOptions}
+									value={field.state.value}
+									onValueChange={(value) => {
+										field.handleChange(value as string);
+										field.handleBlur();
+									}}
+								>
+									<SelectTrigger id={field.name} aria-invalid={hasError}>
+										<SelectValue placeholder="Selecione um fornecedor" />
+									</SelectTrigger>
+									<SelectContent>
+										{supplierOptions.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								{hasError ? (
+									<FieldError
+										errors={field.state.meta.errors.map((message) => ({
+											message,
+										}))}
+									/>
+								) : null}
+							</FieldRow>
+
 							{showNewSupplier && (
-								<div className="mt-2 rounded-md border border-border/60 bg-muted/40 p-3">
+								<div className="rounded-md border border-dashed border-primary/30 bg-primary/5 p-4">
 									<SupplierForm
 										standalone={false}
 										onSuccess={(supplierId) => {
@@ -179,7 +182,7 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 									/>
 								</div>
 							)}
-						</FieldRow>
+						</>
 					);
 				}}
 			</form.Field>
