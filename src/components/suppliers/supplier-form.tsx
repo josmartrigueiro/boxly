@@ -14,15 +14,26 @@ import { Input } from "@/components/ui/input";
 import { formatCnpj, isValidCnpj } from "@/lib/cnpj";
 import { createSupplier, suppliersQueryKey } from "@/lib/suppliers";
 
+type SupplierFormValues = {
+	name: string;
+	cnpj: string;
+	platform: string;
+	location: string;
+	phone: string;
+};
+
 type SupplierFormProps = {
 	onSuccess?: (supplierId: string) => void;
 	/** Render without a wrapping `<form>` element, for use inside another form. */
 	standalone?: boolean;
+	/** Pre-fill the form, e.g. with data parsed from an uploaded NFe. */
+	defaultValues?: Partial<SupplierFormValues>;
 };
 
 export function SupplierForm({
 	onSuccess,
 	standalone = true,
+	defaultValues,
 }: SupplierFormProps) {
 	const queryClient = useQueryClient();
 
@@ -46,6 +57,7 @@ export function SupplierForm({
 			platform: "",
 			location: "",
 			phone: "",
+			...defaultValues,
 		},
 		onSubmit: async ({ value }) => {
 			await mutation.mutateAsync({ data: value });

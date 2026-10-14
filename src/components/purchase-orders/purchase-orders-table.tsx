@@ -1,8 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardList } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import {
+	AlertTriangle,
+	ClipboardList,
+	MoreVertical,
+	Pencil,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
@@ -17,6 +30,7 @@ import {
 	listPurchaseOrders,
 	purchaseOrdersQueryKey,
 } from "@/lib/purchase-orders";
+import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG = {
 	pending: { label: "Pendente", variant: "outline" as const },
@@ -37,6 +51,7 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 const SKELETON_ROW_WIDTHS = ["w-28", "w-20", "w-32", "w-24", "w-28"];
 
 export function PurchaseOrdersTable() {
+	const navigate = useNavigate();
 	const { data: orders = [], isLoading } = useQuery({
 		queryKey: purchaseOrdersQueryKey,
 		queryFn: () => listPurchaseOrders(),
@@ -74,6 +89,9 @@ export function PurchaseOrdersTable() {
 										Itens
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
+										Cadastrado
+									</TableHead>
+									<TableHead className="text-end tracking-wide">
 										Produtos
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
@@ -85,6 +103,7 @@ export function PurchaseOrdersTable() {
 									<TableHead className="text-center tracking-wide">
 										Status
 									</TableHead>
+									<TableHead className="w-10" />
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -107,10 +126,16 @@ export function PurchaseOrdersTable() {
 											<Skeleton className="ml-auto h-4 w-16" />
 										</TableCell>
 										<TableCell className="text-end">
+											<Skeleton className="ml-auto h-4 w-16" />
+										</TableCell>
+										<TableCell className="text-end">
 											<Skeleton className="ml-auto h-4 w-20" />
 										</TableCell>
 										<TableCell className="text-center">
 											<Skeleton className="mx-auto h-5 w-16 rounded-full" />
+										</TableCell>
+										<TableCell>
+											<Skeleton className="mx-auto size-6 rounded-sm" />
 										</TableCell>
 									</TableRow>
 								))}
@@ -138,6 +163,9 @@ export function PurchaseOrdersTable() {
 										Itens
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
+										Cadastrado
+									</TableHead>
+									<TableHead className="text-end tracking-wide">
 										Produtos
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
@@ -149,6 +177,7 @@ export function PurchaseOrdersTable() {
 									<TableHead className="text-center tracking-wide">
 										Status
 									</TableHead>
+									<TableHead className="w-10" />
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -161,8 +190,45 @@ export function PurchaseOrdersTable() {
 									const total = products + chargesTotal;
 									const status = STATUS_CONFIG[order.status];
 
+									// Movimentações são o livro-razão do estoque. Um produto criado
+									// pelo pedido também gera uma entrada, portanto somar as duas
+									// coleções duplicaria quantidades e valores.
+									const registeredCount = order.stockMovements.reduce(
+										(sum, movement) => sum + movement.quantity,
+										0,
+									);
+									const registeredValue = order.stockMovements.reduce(
+										(sum, movement) =>
+											sum + Number(movement.unitCost ?? 0) * movement.quantity,
+										0,
+									);
+									const isComplete = registeredCount === order.itemsCount;
+									const showWarning =
+										order.status === "received" && !isComplete;
+
 									return (
-										<TableRow key={order.id}>
+										<TableRow
+											key={order.id}
+											className="group cursor-pointer transition-colors focus-visible:bg-primary/5 focus-visible:outline-none"
+											tabIndex={0}
+											role="link"
+											onClick={() =>
+												navigate({
+													to: "/purchase-orders/$purchaseOrderId/edit",
+													params: { purchaseOrderId: order.id },
+												})
+											}
+											onKeyDown={(event) => {
+												if (event.key === "Enter" || event.key === " ") {
+													event.preventDefault();
+													navigate({
+														to: "/purchase-orders/$purchaseOrderId/edit",
+														params: { purchaseOrderId: order.id },
+													});
+												}
+											}}
+											aria-label={`Editar pedido de ${order.supplier.name}`}
+										>
 											<TableCell className="font-medium">
 												{order.supplier.name}
 											</TableCell>
@@ -171,6 +237,27 @@ export function PurchaseOrdersTable() {
 											</TableCell>
 											<TableCell className="text-center font-mono text-sm tabular-nums text-foreground">
 												{order.itemsCount}
+											</TableCell>
+											<TableCell className="text-end">
+												<div className="flex flex-col items-end gap-0.5">
+													<span
+														className={cn(
+															"inline-flex items-center gap-1 font-mono text-sm tabular-nums",
+															showWarning
+																? "font-semibold text-amber-600 dark:text-amber-400"
+																: "text-muted-foreground",
+														)}
+													>
+														{showWarning ? (
+															<AlertTriangle className="size-3.5" />
+														) : null}
+														{registeredCount}/{order.itemsCount}
+													</span>
+													<span className="font-mono text-xs tabular-nums text-muted-foreground">
+														{currencyFormatter.format(registeredValue)} de{" "}
+														{currencyFormatter.format(total)}
+													</span>
+												</div>
 											</TableCell>
 											<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
 												{currencyFormatter.format(products)}
@@ -183,6 +270,34 @@ export function PurchaseOrdersTable() {
 											</TableCell>
 											<TableCell className="text-center">
 												<Badge variant={status.variant}>{status.label}</Badge>
+											</TableCell>
+											<TableCell onClick={(event) => event.stopPropagation()}>
+												<DropdownMenu>
+													<DropdownMenuTrigger
+														aria-label="Mais opções"
+														className={cn(
+															buttonVariants({
+																variant: "ghost",
+																size: "icon",
+															}),
+														)}
+													>
+														<MoreVertical className="size-4" />
+													</DropdownMenuTrigger>
+													<DropdownMenuContent>
+														<DropdownMenuItem
+															render={
+																<Link
+																	to="/purchase-orders/$purchaseOrderId/edit"
+																	params={{ purchaseOrderId: order.id }}
+																/>
+															}
+														>
+															<Pencil />
+															Editar pedido
+														</DropdownMenuItem>
+													</DropdownMenuContent>
+												</DropdownMenu>
 											</TableCell>
 										</TableRow>
 									);

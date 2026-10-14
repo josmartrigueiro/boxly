@@ -7,23 +7,22 @@
   },
   "scripts": {
     "dev": "dotenv -e .env.local -- sh -c \"NODE_OPTIONS='--import ./instrument.server.mjs' vite dev --port 3000\"",
-    "build": "vite build && cp instrument.server.mjs .output/server",
+    "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
-    "deploy": "bun run build && wrangler deploy",
+    "deploy": "bunx vercel --prod",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
-    "start": "node --import ./.output/server/instrument.server.mjs .output/server/index.mjs"
+    "start": "node --import ./instrument.server.mjs .output/server/index.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
-    "@cloudflare/vite-plugin": "^1.26.0",
     "@fontsource-variable/geist": "^5.2.9",
     "@internationalized/date": "^3.12.3",
     "@neondatabase/serverless": "^1.0.2",
@@ -44,7 +43,9 @@
     "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.31.9",
     "drizzle-orm": "^0.45.1",
+    "fast-xml-parser": "^5.11.1",
     "lucide-react": "^1.17.0",
+    "nitro": "^3.0.260903-beta",
     "pg": "^8.16.3",
     "react": "^19.2.0",
     "react-aria-components": "^1.20.0",
@@ -73,8 +74,7 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
-    "vitest": "^4.1.5",
-    "wrangler": "^4.70.0"
+    "vitest": "^4.1.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

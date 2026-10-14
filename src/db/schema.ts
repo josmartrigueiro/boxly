@@ -127,6 +127,8 @@ export const purchaseOrders = pgTable("purchase_orders", {
 	}).notNull(),
 	status: purchaseOrderStatusEnum("status").notNull().default("pending"),
 	notes: text("notes"),
+	sourceXml: text("source_xml"),
+	nfeKey: text("nfe_key").unique(),
 	createdById: text("created_by_id").references(() => user.id, {
 		onDelete: "set null",
 	}),
@@ -169,6 +171,8 @@ export const purchaseOrderRelations = relations(
 			references: [user.id],
 		}),
 		charges: many(purchaseOrderCharges),
+		products: many(products),
+		stockMovements: many(stockMovements),
 	}),
 );
 
@@ -191,8 +195,9 @@ export const products = pgTable("products", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	sku: text("sku").notNull().unique(),
 	name: text("name").notNull(),
+	brand: text("brand"),
 	category: text("category").notNull(),
-	unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).notNull(),
+	unitCost: numeric("unit_cost", { precision: 12, scale: 6 }).notNull(),
 	salePrice: numeric("sale_price", { precision: 10, scale: 2 }).notNull(),
 	quantity: integer("quantity").notNull().default(0),
 	receivedQuantity: integer("received_quantity"),
@@ -201,6 +206,7 @@ export const products = pgTable("products", {
 		{ onDelete: "set null" },
 	),
 	photoUrl: text("photo_url"),
+	photoThumbnailUrl: text("photo_thumbnail_url"),
 	saleLink: text("sale_link"),
 	status: productStatusEnum("status").notNull().default("active"),
 	notes: text("notes"),
@@ -220,6 +226,64 @@ export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
 	"ajuste",
 ]);
 
+export const salesChannelEnum = pgEnum("sales_channel", [
+	"tiktok",
+	"whatsapp",
+	"instagram",
+]);
+
+export const salesOrderStatusEnum = pgEnum("sales_order_status", [
+	"completed",
+	"cancelled",
+]);
+
+export const salesDiscountTypeEnum = pgEnum("sales_discount_type", [
+	"percentage",
+	"fixed",
+]);
+
+export const salesOrders = pgTable("sales_orders", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	channel: salesChannelEnum("channel").notNull(),
+	customerName: text("customer_name"),
+	orderDate: timestamp("order_date").notNull(),
+	subtotalValue: numeric("subtotal_value", { precision: 10, scale: 2 })
+		.notNull()
+		.default("0"),
+	discountType: salesDiscountTypeEnum("discount_type"),
+	discountValue: numeric("discount_value", { precision: 10, scale: 2 })
+		.notNull()
+		.default("0"),
+	discountAmount: numeric("discount_amount", { precision: 10, scale: 2 })
+		.notNull()
+		.default("0"),
+	totalValue: numeric("total_value", { precision: 10, scale: 2 }).notNull(),
+	status: salesOrderStatusEnum("status").notNull().default("completed"),
+	notes: text("notes"),
+	createdById: text("created_by_id").references(() => user.id, {
+		onDelete: "set null",
+	}),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at")
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+});
+
+export const salesOrderItems = pgTable("sales_order_items", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	salesOrderId: uuid("sales_order_id")
+		.notNull()
+		.references(() => salesOrders.id, { onDelete: "cascade" }),
+	productId: uuid("product_id").references(() => products.id, {
+		onDelete: "set null",
+	}),
+	productName: text("product_name").notNull(),
+	quantity: integer("quantity").notNull(),
+	unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const stockMovements = pgTable("stock_movements", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	productId: uuid("product_id")
@@ -227,6 +291,14 @@ export const stockMovements = pgTable("stock_movements", {
 		.references(() => products.id, { onDelete: "cascade" }),
 	type: stockMovementTypeEnum("type").notNull(),
 	quantity: integer("quantity").notNull(),
+	unitCost: numeric("unit_cost", { precision: 12, scale: 6 }),
+	purchaseOrderId: uuid("purchase_order_id").references(
+		() => purchaseOrders.id,
+		{ onDelete: "set null" },
+	),
+	salesOrderId: uuid("sales_order_id").references(() => salesOrders.id, {
+		onDelete: "set null",
+	}),
 	date: timestamp("date").notNull(),
 	reason: text("reason"),
 	createdById: text("created_by_id").references(() => user.id, {
@@ -234,6 +306,29 @@ export const stockMovements = pgTable("stock_movements", {
 	}),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const salesOrderRelations = relations(salesOrders, ({ one, many }) => ({
+	createdBy: one(user, {
+		fields: [salesOrders.createdById],
+		references: [user.id],
+	}),
+	items: many(salesOrderItems),
+	movements: many(stockMovements),
+}));
+
+export const salesOrderItemRelations = relations(
+	salesOrderItems,
+	({ one }) => ({
+		salesOrder: one(salesOrders, {
+			fields: [salesOrderItems.salesOrderId],
+			references: [salesOrders.id],
+		}),
+		product: one(products, {
+			fields: [salesOrderItems.productId],
+			references: [products.id],
+		}),
+	}),
+);
 
 export const productRelations = relations(products, ({ one, many }) => ({
 	purchaseOrder: one(purchaseOrders, {
@@ -251,6 +346,14 @@ export const stockMovementRelations = relations(stockMovements, ({ one }) => ({
 	product: one(products, {
 		fields: [stockMovements.productId],
 		references: [products.id],
+	}),
+	purchaseOrder: one(purchaseOrders, {
+		fields: [stockMovements.purchaseOrderId],
+		references: [purchaseOrders.id],
+	}),
+	salesOrder: one(salesOrders, {
+		fields: [stockMovements.salesOrderId],
+		references: [salesOrders.id],
 	}),
 	createdBy: one(user, {
 		fields: [stockMovements.createdById],

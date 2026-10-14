@@ -14,12 +14,17 @@ import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as DashboardIndexRouteImport } from './routes/_dashboard/index'
 import { Route as DashboardSuppliersRouteImport } from './routes/_dashboard/suppliers'
 import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
+import { Route as DashboardSalesIndexRouteImport } from './routes/_dashboard/sales/index'
 import { Route as DashboardPurchaseOrdersIndexRouteImport } from './routes/_dashboard/purchase-orders/index'
 import { Route as DashboardInventoryIndexRouteImport } from './routes/_dashboard/inventory/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as DashboardSalesNewRouteImport } from './routes/_dashboard/sales/new'
+import { Route as DashboardSalesSalesOrderIdRouteImport } from './routes/_dashboard/sales/$salesOrderId'
 import { Route as DashboardPurchaseOrdersNewRouteImport } from './routes/_dashboard/purchase-orders/new'
 import { Route as DashboardInventoryNewRouteImport } from './routes/_dashboard/inventory/new'
 import { Route as DashboardInventoryProductIdRouteImport } from './routes/_dashboard/inventory/$productId'
+import { Route as DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport } from './routes/_dashboard/purchase-orders/$purchaseOrderId.edit'
+import { Route as DashboardInventoryProductIdEditRouteImport } from './routes/_dashboard/inventory/$productId.edit'
 
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
@@ -45,6 +50,11 @@ const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardSalesIndexRoute = DashboardSalesIndexRouteImport.update({
+  id: '/sales/',
+  path: '/sales/',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardPurchaseOrdersIndexRoute =
   DashboardPurchaseOrdersIndexRouteImport.update({
     id: '/purchase-orders/',
@@ -61,6 +71,17 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardSalesNewRoute = DashboardSalesNewRouteImport.update({
+  id: '/sales/new',
+  path: '/sales/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSalesSalesOrderIdRoute =
+  DashboardSalesSalesOrderIdRouteImport.update({
+    id: '/sales/$salesOrderId',
+    path: '/sales/$salesOrderId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardPurchaseOrdersNewRoute =
   DashboardPurchaseOrdersNewRouteImport.update({
     id: '/purchase-orders/new',
@@ -78,30 +99,52 @@ const DashboardInventoryProductIdRoute =
     path: '/inventory/$productId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardPurchaseOrdersPurchaseOrderIdEditRoute =
+  DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport.update({
+    id: '/purchase-orders/$purchaseOrderId/edit',
+    path: '/purchase-orders/$purchaseOrderId/edit',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardInventoryProductIdEditRoute =
+  DashboardInventoryProductIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => DashboardInventoryProductIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof DashboardIndexRoute
   '/sign-in': typeof SignInRoute
   '/settings': typeof DashboardSettingsRoute
   '/suppliers': typeof DashboardSuppliersRoute
-  '/inventory/$productId': typeof DashboardInventoryProductIdRoute
+  '/inventory/$productId': typeof DashboardInventoryProductIdRouteWithChildren
   '/inventory/new': typeof DashboardInventoryNewRoute
   '/purchase-orders/new': typeof DashboardPurchaseOrdersNewRoute
+  '/sales/$salesOrderId': typeof DashboardSalesSalesOrderIdRoute
+  '/sales/new': typeof DashboardSalesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/inventory/': typeof DashboardInventoryIndexRoute
   '/purchase-orders/': typeof DashboardPurchaseOrdersIndexRoute
+  '/sales/': typeof DashboardSalesIndexRoute
+  '/inventory/$productId/edit': typeof DashboardInventoryProductIdEditRoute
+  '/purchase-orders/$purchaseOrderId/edit': typeof DashboardPurchaseOrdersPurchaseOrderIdEditRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/settings': typeof DashboardSettingsRoute
   '/suppliers': typeof DashboardSuppliersRoute
   '/': typeof DashboardIndexRoute
-  '/inventory/$productId': typeof DashboardInventoryProductIdRoute
+  '/inventory/$productId': typeof DashboardInventoryProductIdRouteWithChildren
   '/inventory/new': typeof DashboardInventoryNewRoute
   '/purchase-orders/new': typeof DashboardPurchaseOrdersNewRoute
+  '/sales/$salesOrderId': typeof DashboardSalesSalesOrderIdRoute
+  '/sales/new': typeof DashboardSalesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/inventory': typeof DashboardInventoryIndexRoute
   '/purchase-orders': typeof DashboardPurchaseOrdersIndexRoute
+  '/sales': typeof DashboardSalesIndexRoute
+  '/inventory/$productId/edit': typeof DashboardInventoryProductIdEditRoute
+  '/purchase-orders/$purchaseOrderId/edit': typeof DashboardPurchaseOrdersPurchaseOrderIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -110,12 +153,17 @@ export interface FileRoutesById {
   '/_dashboard/settings': typeof DashboardSettingsRoute
   '/_dashboard/suppliers': typeof DashboardSuppliersRoute
   '/_dashboard/': typeof DashboardIndexRoute
-  '/_dashboard/inventory/$productId': typeof DashboardInventoryProductIdRoute
+  '/_dashboard/inventory/$productId': typeof DashboardInventoryProductIdRouteWithChildren
   '/_dashboard/inventory/new': typeof DashboardInventoryNewRoute
   '/_dashboard/purchase-orders/new': typeof DashboardPurchaseOrdersNewRoute
+  '/_dashboard/sales/$salesOrderId': typeof DashboardSalesSalesOrderIdRoute
+  '/_dashboard/sales/new': typeof DashboardSalesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_dashboard/inventory/': typeof DashboardInventoryIndexRoute
   '/_dashboard/purchase-orders/': typeof DashboardPurchaseOrdersIndexRoute
+  '/_dashboard/sales/': typeof DashboardSalesIndexRoute
+  '/_dashboard/inventory/$productId/edit': typeof DashboardInventoryProductIdEditRoute
+  '/_dashboard/purchase-orders/$purchaseOrderId/edit': typeof DashboardPurchaseOrdersPurchaseOrderIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,9 +175,14 @@ export interface FileRouteTypes {
     | '/inventory/$productId'
     | '/inventory/new'
     | '/purchase-orders/new'
+    | '/sales/$salesOrderId'
+    | '/sales/new'
     | '/api/auth/$'
     | '/inventory/'
     | '/purchase-orders/'
+    | '/sales/'
+    | '/inventory/$productId/edit'
+    | '/purchase-orders/$purchaseOrderId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/sign-in'
@@ -139,9 +192,14 @@ export interface FileRouteTypes {
     | '/inventory/$productId'
     | '/inventory/new'
     | '/purchase-orders/new'
+    | '/sales/$salesOrderId'
+    | '/sales/new'
     | '/api/auth/$'
     | '/inventory'
     | '/purchase-orders'
+    | '/sales'
+    | '/inventory/$productId/edit'
+    | '/purchase-orders/$purchaseOrderId/edit'
   id:
     | '__root__'
     | '/_dashboard'
@@ -152,9 +210,14 @@ export interface FileRouteTypes {
     | '/_dashboard/inventory/$productId'
     | '/_dashboard/inventory/new'
     | '/_dashboard/purchase-orders/new'
+    | '/_dashboard/sales/$salesOrderId'
+    | '/_dashboard/sales/new'
     | '/api/auth/$'
     | '/_dashboard/inventory/'
     | '/_dashboard/purchase-orders/'
+    | '/_dashboard/sales/'
+    | '/_dashboard/inventory/$productId/edit'
+    | '/_dashboard/purchase-orders/$purchaseOrderId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -200,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/sales/': {
+      id: '/_dashboard/sales/'
+      path: '/sales'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof DashboardSalesIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/purchase-orders/': {
       id: '/_dashboard/purchase-orders/'
       path: '/purchase-orders'
@@ -220,6 +290,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_dashboard/sales/new': {
+      id: '/_dashboard/sales/new'
+      path: '/sales/new'
+      fullPath: '/sales/new'
+      preLoaderRoute: typeof DashboardSalesNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/sales/$salesOrderId': {
+      id: '/_dashboard/sales/$salesOrderId'
+      path: '/sales/$salesOrderId'
+      fullPath: '/sales/$salesOrderId'
+      preLoaderRoute: typeof DashboardSalesSalesOrderIdRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/_dashboard/purchase-orders/new': {
       id: '/_dashboard/purchase-orders/new'
@@ -242,29 +326,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardInventoryProductIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/purchase-orders/$purchaseOrderId/edit': {
+      id: '/_dashboard/purchase-orders/$purchaseOrderId/edit'
+      path: '/purchase-orders/$purchaseOrderId/edit'
+      fullPath: '/purchase-orders/$purchaseOrderId/edit'
+      preLoaderRoute: typeof DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/inventory/$productId/edit': {
+      id: '/_dashboard/inventory/$productId/edit'
+      path: '/edit'
+      fullPath: '/inventory/$productId/edit'
+      preLoaderRoute: typeof DashboardInventoryProductIdEditRouteImport
+      parentRoute: typeof DashboardInventoryProductIdRoute
+    }
   }
 }
+
+interface DashboardInventoryProductIdRouteChildren {
+  DashboardInventoryProductIdEditRoute: typeof DashboardInventoryProductIdEditRoute
+}
+
+const DashboardInventoryProductIdRouteChildren: DashboardInventoryProductIdRouteChildren =
+  {
+    DashboardInventoryProductIdEditRoute: DashboardInventoryProductIdEditRoute,
+  }
+
+const DashboardInventoryProductIdRouteWithChildren =
+  DashboardInventoryProductIdRoute._addFileChildren(
+    DashboardInventoryProductIdRouteChildren,
+  )
 
 interface DashboardRouteChildren {
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardSuppliersRoute: typeof DashboardSuppliersRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
-  DashboardInventoryProductIdRoute: typeof DashboardInventoryProductIdRoute
+  DashboardInventoryProductIdRoute: typeof DashboardInventoryProductIdRouteWithChildren
   DashboardInventoryNewRoute: typeof DashboardInventoryNewRoute
   DashboardPurchaseOrdersNewRoute: typeof DashboardPurchaseOrdersNewRoute
+  DashboardSalesSalesOrderIdRoute: typeof DashboardSalesSalesOrderIdRoute
+  DashboardSalesNewRoute: typeof DashboardSalesNewRoute
   DashboardInventoryIndexRoute: typeof DashboardInventoryIndexRoute
   DashboardPurchaseOrdersIndexRoute: typeof DashboardPurchaseOrdersIndexRoute
+  DashboardSalesIndexRoute: typeof DashboardSalesIndexRoute
+  DashboardPurchaseOrdersPurchaseOrderIdEditRoute: typeof DashboardPurchaseOrdersPurchaseOrderIdEditRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardSuppliersRoute: DashboardSuppliersRoute,
   DashboardIndexRoute: DashboardIndexRoute,
-  DashboardInventoryProductIdRoute: DashboardInventoryProductIdRoute,
+  DashboardInventoryProductIdRoute:
+    DashboardInventoryProductIdRouteWithChildren,
   DashboardInventoryNewRoute: DashboardInventoryNewRoute,
   DashboardPurchaseOrdersNewRoute: DashboardPurchaseOrdersNewRoute,
+  DashboardSalesSalesOrderIdRoute: DashboardSalesSalesOrderIdRoute,
+  DashboardSalesNewRoute: DashboardSalesNewRoute,
   DashboardInventoryIndexRoute: DashboardInventoryIndexRoute,
   DashboardPurchaseOrdersIndexRoute: DashboardPurchaseOrdersIndexRoute,
+  DashboardSalesIndexRoute: DashboardSalesIndexRoute,
+  DashboardPurchaseOrdersPurchaseOrderIdEditRoute:
+    DashboardPurchaseOrdersPurchaseOrderIdEditRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

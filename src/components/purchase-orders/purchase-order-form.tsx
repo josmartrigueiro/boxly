@@ -1,4 +1,4 @@
-import { getLocalTimeZone, today } from "@internationalized/date";
+import { getLocalTimeZone, parseDate, today } from "@internationalized/date";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
@@ -23,9 +23,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { computeChargesTotal } from "@/lib/purchase-order-totals";
+import type { getPurchaseOrder } from "@/lib/purchase-orders";
 import {
 	createPurchaseOrder,
+	purchaseOrderQueryKey,
 	purchaseOrdersQueryKey,
+	updatePurchaseOrder,
 } from "@/lib/purchase-orders";
 import { listSuppliers, suppliersQueryKey } from "@/lib/suppliers";
 
@@ -46,11 +49,18 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 	currency: "BRL",
 });
 
+type PurchaseOrder = NonNullable<Awaited<ReturnType<typeof getPurchaseOrder>>>;
+
 type PurchaseOrderFormProps = {
 	onSuccess?: () => void;
+	order?: PurchaseOrder;
 };
 
-export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
+export function PurchaseOrderForm({
+	onSuccess,
+	order,
+}: PurchaseOrderFormProps) {
+	const mode = order ? "edit" : "create";
 	const queryClient = useQueryClient();
 	const [showNewSupplier, setShowNewSupplier] = useState(false);
 
@@ -64,7 +74,7 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 		label: supplier.name,
 	}));
 
-	const mutation = useMutation({
+	const createMutation = useMutation({
 		mutationFn: createPurchaseOrder,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: purchaseOrdersQueryKey });
@@ -72,37 +82,79 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 			form.reset();
 			onSuccess?.();
 		},
-		onError: () => {
-			toast.error("Não foi possível registrar o pedido.");
+		onError: (error) => {
+			toast.error(error.message || "Não foi possível registrar o pedido.");
+		},
+	});
+
+	const updateMutation = useMutation({
+		mutationFn: updatePurchaseOrder,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: purchaseOrdersQueryKey });
+			if (order) {
+				queryClient.invalidateQueries({
+					queryKey: purchaseOrderQueryKey(order.id),
+				});
+			}
+			toast.success("Pedido atualizado!");
+			onSuccess?.();
+		},
+		onError: (error) => {
+			toast.error(error.message || "Não foi possível atualizar o pedido.");
 		},
 	});
 
 	const form = useForm({
 		defaultValues: {
-			supplierId: "",
-			orderDate: today(getLocalTimeZone()),
-			itemsCount: 1,
-			productsValue: 0,
-			status: "pending" as "pending" | "in_transit" | "received" | "cancelled",
-			notes: "",
-			charges: [] as Array<{
+			supplierId: order?.supplierId ?? "",
+			orderDate: order
+				? parseDate(new Date(order.orderDate).toISOString().slice(0, 10))
+				: today(getLocalTimeZone()),
+			itemsCount: order?.itemsCount ?? 1,
+			productsValue: order ? Number(order.productsValue) : 0,
+			status: (order?.status ?? "pending") as
+				| "pending"
+				| "in_transit"
+				| "received"
+				| "cancelled",
+			notes: order?.notes ?? "",
+			charges: (order?.charges.map((charge) => ({
+				name: charge.name,
+				kind: charge.kind,
+				value: Number(charge.value),
+			})) ?? []) as Array<{
 				name: string;
 				kind: "percentage" | "fixed";
 				value: number;
 			}>,
 		},
 		onSubmit: async ({ value }) => {
-			await mutation.mutateAsync({
-				data: {
-					supplierId: value.supplierId,
-					orderDate: value.orderDate.toString(),
-					itemsCount: value.itemsCount,
-					productsValue: value.productsValue,
-					status: value.status,
-					notes: value.notes,
-					charges: value.charges,
-				},
-			});
+			if (order) {
+				await updateMutation.mutateAsync({
+					data: {
+						id: order.id,
+						supplierId: value.supplierId,
+						orderDate: value.orderDate.toString(),
+						itemsCount: value.itemsCount,
+						productsValue: value.productsValue,
+						status: value.status,
+						notes: value.notes,
+						charges: value.charges,
+					},
+				});
+			} else {
+				await createMutation.mutateAsync({
+					data: {
+						supplierId: value.supplierId,
+						orderDate: value.orderDate.toString(),
+						itemsCount: value.itemsCount,
+						productsValue: value.productsValue,
+						status: value.status,
+						notes: value.notes,
+						charges: value.charges,
+					},
+				});
+			}
 		},
 	});
 
@@ -561,7 +613,11 @@ export function PurchaseOrderForm({ onSuccess }: PurchaseOrderFormProps) {
 							onClick={() => form.handleSubmit()}
 							disabled={!canSubmit || isSubmitting}
 						>
-							{isSubmitting ? "Salvando..." : "Registrar pedido"}
+							{isSubmitting
+								? "Salvando..."
+								: mode === "edit"
+									? "Salvar alterações"
+									: "Registrar pedido"}
 						</Button>
 					</HeaderActionsPortal>
 				)}
