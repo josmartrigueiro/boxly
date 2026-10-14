@@ -1,8 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { Package, Search } from "lucide-react";
-import { useMemo, useState } from "react";
-
+import { getRouteApi } from "@tanstack/react-router";
+import {
+	ArrowDown,
+	ArrowUp,
+	ArrowUpDown,
+	Check,
+	Columns3,
+	Package,
+	Search,
+	X,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ProductImagePreview } from "@/components/products/product-image-preview";
 import { ProductStatusBadge } from "@/components/products/product-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +21,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import {
 	Select,
 	SelectContent,
@@ -31,9 +46,21 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { useTiktokCommission } from "@/hooks/use-tiktok-commission";
-import { getMargin, listProducts, productsQueryKey } from "@/lib/products";
+import { getMargin, type listInventory } from "@/lib/products";
+import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 10;
+type SortColumn = "createdAt" | "name" | "supplier" | "quantity" | "unitCost";
+type ProductColumnKey =
+	| "name"
+	| "order"
+	| "quantity"
+	| "unitCost"
+	| "salePrice"
+	| "tiktokPrice"
+	| "margin"
+	| "status";
+
+const routeApi = getRouteApi("/_dashboard/inventory/");
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 	style: "currency",
@@ -41,58 +68,213 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 });
 
 const SKELETON_ROW_WIDTHS = ["w-28", "w-20", "w-32", "w-24", "w-28"];
+const COLUMN_STORAGE_KEY = "boxly:inventory-visible-columns";
+const DEFAULT_COLUMNS: ProductColumnKey[] = [
+	"name",
+	"order",
+	"quantity",
+	"unitCost",
+	"salePrice",
+	"tiktokPrice",
+	"margin",
+	"status",
+];
+const COLUMN_OPTIONS: Array<{ key: ProductColumnKey; label: string }> = [
+	{ key: "name", label: "Nome e imagem" },
+	{ key: "order", label: "Pedido" },
+	{ key: "quantity", label: "Qtd. atual" },
+	{ key: "unitCost", label: "Custo unit." },
+	{ key: "salePrice", label: "Preço de venda" },
+	{ key: "tiktokPrice", label: "Preço TikTok" },
+	{ key: "margin", label: "Margem" },
+	{ key: "status", label: "Status" },
+];
 
-export function ProductsTable() {
-	const [search, setSearch] = useState("");
-	const [category, setCategory] = useState("all");
-	const [page, setPage] = useState(1);
+function normalizeVisibleColumns(value: unknown): ProductColumnKey[] {
+	if (!Array.isArray(value)) return DEFAULT_COLUMNS;
+	const valid = value.filter((column): column is ProductColumnKey =>
+		DEFAULT_COLUMNS.includes(column as ProductColumnKey),
+	);
+	const columns = Array.from(new Set(["name" as ProductColumnKey, ...valid]));
+	return columns.length >= 3 ? columns : DEFAULT_COLUMNS;
+}
+
+type InventoryData = Awaited<ReturnType<typeof listInventory>>;
+
+type ProductsTableProps = {
+	inventory?: InventoryData;
+	isLoading: boolean;
+	isRefreshing: boolean;
+};
+
+export function ProductsTable({
+	inventory,
+	isLoading,
+	isRefreshing,
+}: ProductsTableProps) {
+	const { q, category, page, pageSize, sort, dir } = routeApi.useSearch();
+	const navigate = routeApi.useNavigate();
 	const { commission } = useTiktokCommission();
+	const [visibleColumns, setVisibleColumns] =
+		useState<ProductColumnKey[]>(DEFAULT_COLUMNS);
+	const [searchDraft, setSearchDraft] = useState(q);
 
-	const { data: products = [], isLoading } = useQuery({
-		queryKey: productsQueryKey,
-		queryFn: () => listProducts(),
-	});
+	useEffect(() => {
+		try {
+			const stored = window.localStorage.getItem(COLUMN_STORAGE_KEY);
+			if (stored)
+				setVisibleColumns(normalizeVisibleColumns(JSON.parse(stored)));
+		} catch {
+			setVisibleColumns(DEFAULT_COLUMNS);
+		}
+	}, []);
+
+	useEffect(() => {
+		setSearchDraft(q);
+	}, [q]);
+
+	useEffect(() => {
+		if (searchDraft === q) return;
+
+		const timeout = window.setTimeout(() => {
+			navigate({
+				search: (prev) => ({ ...prev, q: searchDraft, page: 1 }),
+				replace: true,
+			});
+		}, 300);
+
+		return () => window.clearTimeout(timeout);
+	}, [navigate, q, searchDraft]);
 
 	const categoryOptions = useMemo(() => {
-		const categories = Array.from(
-			new Set(products.map((product) => product.category)),
-		).sort((a, b) => a.localeCompare(b));
 		return [
 			{ value: "all", label: "Todas as linhas" },
-			...categories.map((value) => ({ value, label: value })),
+			...(inventory?.categories ?? []).map((value) => ({
+				value,
+				label: value,
+			})),
 		];
-	}, [products]);
+	}, [inventory?.categories]);
 
-	const hasActiveFilters = search.trim() !== "" || category !== "all";
+	const isDefaultSort = sort === "createdAt" && dir === "desc";
+	const hasActiveFilters =
+		q.trim() !== "" || category !== "all" || !isDefaultSort;
 
-	const filtered = useMemo(() => {
-		const term = search.trim().toLowerCase();
-		return products.filter((product) => {
-			const matchesSearch =
-				term === "" ||
-				product.name.toLowerCase().includes(term) ||
-				product.sku.toLowerCase().includes(term);
-			const matchesCategory =
-				category === "all" || product.category === category;
-			return matchesSearch && matchesCategory;
-		});
-	}, [products, search, category]);
-
-	const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+	const products = inventory?.items ?? [];
+	const total = inventory?.total ?? 0;
+	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 	const currentPage = Math.min(page, totalPages);
-	const paginated = filtered.slice(
-		(currentPage - 1) * PAGE_SIZE,
-		currentPage * PAGE_SIZE,
-	);
 
 	function handleSearchChange(value: string) {
-		setSearch(value);
-		setPage(1);
+		setSearchDraft(value);
 	}
 
 	function handleCategoryChange(value: string) {
-		setCategory(value);
-		setPage(1);
+		navigate({
+			search: (prev) => ({ ...prev, category: value, page: 1 }),
+			replace: true,
+		});
+	}
+
+	function handleSort(column: SortColumn) {
+		navigate({
+			search: (prev) => ({
+				...prev,
+				sort: column,
+				dir: prev.sort === column && prev.dir === "asc" ? "desc" : "asc",
+				page: 1,
+			}),
+			replace: true,
+		});
+	}
+
+	function handlePageChange(newPage: number) {
+		navigate({
+			search: (prev) => ({ ...prev, page: newPage }),
+			replace: true,
+		});
+	}
+
+	function handlePageSizeChange(newSize: number) {
+		const clamped = Math.min(999, Math.max(1, Math.round(newSize)));
+		navigate({
+			search: (prev) => ({ ...prev, pageSize: clamped, page: 1 }),
+			replace: true,
+		});
+	}
+
+	function handleClearFilters() {
+		navigate({
+			search: {
+				q: "",
+				category: "all",
+				sort: "createdAt",
+				dir: "desc",
+				page: 1,
+				pageSize,
+				product: undefined,
+			},
+			replace: true,
+		});
+	}
+
+	function handleOpenProduct(productId: string) {
+		navigate({
+			search: (prev) => ({ ...prev, product: productId }),
+		});
+	}
+
+	function isColumnVisible(column: ProductColumnKey) {
+		return visibleColumns.includes(column);
+	}
+
+	function toggleColumn(column: ProductColumnKey, checked: boolean) {
+		if (column === "name") return;
+		if (!checked && visibleColumns.length <= 3) return;
+
+		const next = checked
+			? [...visibleColumns, column]
+			: visibleColumns.filter((item) => item !== column);
+		const normalized = normalizeVisibleColumns(next);
+		setVisibleColumns(normalized);
+		try {
+			window.localStorage.setItem(
+				COLUMN_STORAGE_KEY,
+				JSON.stringify(normalized),
+			);
+		} catch {
+			// A tabela segue funcionando mesmo se o navegador bloquear o armazenamento.
+		}
+	}
+
+	function SortableHead({
+		column,
+		children,
+		align = "start",
+	}: {
+		column: SortColumn;
+		children: React.ReactNode;
+		align?: "start" | "end";
+	}) {
+		const isActive = sort === column;
+		const Icon = isActive ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+		return (
+			<TableHead className={align === "end" ? "text-end" : undefined}>
+				<button
+					type="button"
+					onClick={() => handleSort(column)}
+					className={cn(
+						"inline-flex items-center gap-1 tracking-wide transition-colors hover:text-foreground",
+						align === "end" && "flex-row-reverse",
+						isActive ? "text-foreground" : "text-muted-foreground",
+					)}
+				>
+					{children}
+					<Icon className="size-3 text-foreground" />
+				</button>
+			</TableHead>
+		);
 	}
 
 	return (
@@ -108,9 +290,14 @@ export function ProductsTable() {
 							<Skeleton className="ml-2 inline-block size-6 rounded-full align-middle" />
 						) : (
 							<Badge className="ml-2 size-6 rounded-full border-border/60 bg-muted p-0.5 font-mono text-xs tabular-nums text-muted-foreground shadow-sm">
-								{filtered.length}
+								{total}
 							</Badge>
 						)}
+						{isRefreshing ? (
+							<span className="ml-2 text-xs font-normal text-muted-foreground animate-in fade-in-0 duration-200">
+								Atualizando…
+							</span>
+						) : null}
 					</CardTitle>
 				</div>
 				<CardAction className="flex items-center gap-2">
@@ -119,7 +306,7 @@ export function ProductsTable() {
 						<Input
 							type="text"
 							placeholder="Buscar por nome ou código..."
-							value={search}
+							value={searchDraft}
 							onChange={(event) => handleSearchChange(event.target.value)}
 							className="w-[240px] pl-8"
 						/>
@@ -139,6 +326,84 @@ export function ProductsTable() {
 							))}
 						</SelectContent>
 					</Select>
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							aria-label="Selecionar colunas visíveis"
+							className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-input bg-background/70 px-2.5 text-sm text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground"
+						>
+							<Columns3 className="size-3.5" />
+							Colunas
+						</DropdownMenuTrigger>
+						<DropdownMenuContent className="w-56 p-1.5">
+							<div className="flex items-center justify-between px-1.5 py-1">
+								<div>
+									<p className="text-xs font-medium text-foreground">
+										Exibir colunas
+									</p>
+									<p className="text-[11px] text-muted-foreground">
+										Salvo neste navegador
+									</p>
+								</div>
+								<span className="rounded-full border border-border/60 bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+									{visibleColumns.length}/{COLUMN_OPTIONS.length}
+								</span>
+							</div>
+							<div className="my-1 h-px bg-border/60" />
+							{COLUMN_OPTIONS.map((column) => {
+								const checked = isColumnVisible(column.key);
+								const disabled =
+									column.key === "name" ||
+									(checked && visibleColumns.length <= 3);
+								return (
+									<DropdownMenuCheckboxItem
+										key={column.key}
+										checked={checked}
+										disabled={disabled}
+										className="data-checked:bg-transparent data-highlighted:bg-transparent"
+										onCheckedChange={(nextChecked) =>
+											toggleColumn(column.key, nextChecked)
+										}
+									>
+										<span
+											className={cn(
+												"flex size-4 shrink-0 items-center justify-center rounded-[3px] border transition-colors",
+												checked
+													? "border-primary bg-primary text-primary-foreground"
+													: "border-border bg-background text-transparent",
+											)}
+										>
+											<Check className="size-3" strokeWidth={2.5} />
+										</span>
+										{column.label}
+									</DropdownMenuCheckboxItem>
+								);
+							})}
+						</DropdownMenuContent>
+					</DropdownMenu>
+					<div
+						className={cn(
+							"grid overflow-hidden transition-all duration-200 ease-out",
+							hasActiveFilters
+								? "grid-cols-[1fr] opacity-100"
+								: "grid-cols-[0fr] opacity-0",
+						)}
+					>
+						<div className="min-w-0">
+							<Button
+								variant="ghost"
+								size="sm"
+								className={cn(
+									"gap-1.5 whitespace-nowrap text-muted-foreground transition-transform duration-200 ease-out",
+									hasActiveFilters ? "scale-100" : "scale-90",
+								)}
+								onClick={handleClearFilters}
+								tabIndex={hasActiveFilters ? 0 : -1}
+							>
+								<X className="size-3.5" />
+								Limpar filtros
+							</Button>
+						</div>
+					</div>
 				</CardAction>
 			</CardHeader>
 
@@ -150,7 +415,7 @@ export function ProductsTable() {
 								<TableRow className="bg-primary/5">
 									<TableHead className="tracking-wide">Nome</TableHead>
 									<TableHead className="tracking-wide">Pedido</TableHead>
-									<TableHead className="text-center tracking-wide">
+									<TableHead className="text-end tracking-wide">
 										Qtd. Atual
 									</TableHead>
 									<TableHead className="text-end tracking-wide">
@@ -180,8 +445,8 @@ export function ProductsTable() {
 										<TableCell>
 											<Skeleton className="h-4 w-20" />
 										</TableCell>
-										<TableCell className="text-center">
-											<Skeleton className="mx-auto h-4 w-6" />
+										<TableCell className="text-end">
+											<Skeleton className="ml-auto h-4 w-6" />
 										</TableCell>
 										<TableCell className="text-end">
 											<Skeleton className="ml-auto h-4 w-16" />
@@ -203,7 +468,7 @@ export function ProductsTable() {
 							</TableBody>
 						</Table>
 					</div>
-				) : paginated.length === 0 ? (
+				) : products.length === 0 ? (
 					<div className="flex flex-col items-center justify-center px-4 py-16">
 						<div className="grid size-14 place-items-center rounded-xl border border-border/60 p-2 shadow-xs">
 							<Search className="size-6 text-muted-foreground" />
@@ -222,70 +487,115 @@ export function ProductsTable() {
 						<Table>
 							<TableHeader>
 								<TableRow className="bg-primary/5">
-									<TableHead className="tracking-wide">Nome</TableHead>
-									<TableHead className="tracking-wide">Pedido</TableHead>
-									<TableHead className="text-center tracking-wide">
-										Qtd. Atual
-									</TableHead>
-									<TableHead className="text-end tracking-wide">
-										Custo Unit.
-									</TableHead>
-									<TableHead className="text-end tracking-wide">
-										Preço de Venda
-									</TableHead>
-									<TableHead className="text-end tracking-wide">
-										Preço TikTok
-									</TableHead>
-									<TableHead className="text-end tracking-wide">
-										Margem
-									</TableHead>
-									<TableHead className="text-center tracking-wide">
-										Status
-									</TableHead>
+									{isColumnVisible("name") ? (
+										<SortableHead column="name">Nome</SortableHead>
+									) : null}
+									{isColumnVisible("order") ? (
+										<SortableHead column="supplier">Pedido</SortableHead>
+									) : null}
+									{isColumnVisible("quantity") ? (
+										<SortableHead column="quantity" align="end">
+											Qtd. Atual
+										</SortableHead>
+									) : null}
+									{isColumnVisible("unitCost") ? (
+										<SortableHead column="unitCost" align="end">
+											Custo Unit.
+										</SortableHead>
+									) : null}
+									{isColumnVisible("salePrice") ? (
+										<TableHead className="text-end tracking-wide">
+											Preço de Venda
+										</TableHead>
+									) : null}
+									{isColumnVisible("tiktokPrice") ? (
+										<TableHead className="text-end tracking-wide">
+											Preço TikTok
+										</TableHead>
+									) : null}
+									{isColumnVisible("margin") ? (
+										<TableHead className="text-end tracking-wide">
+											Margem
+										</TableHead>
+									) : null}
+									{isColumnVisible("status") ? (
+										<TableHead className="text-center tracking-wide">
+											Status
+										</TableHead>
+									) : null}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{paginated.map((product) => {
+								{products.map((product) => {
 									const unitCost = Number(product.unitCost);
 									const salePrice = Number(product.salePrice);
 									const margin = getMargin(unitCost, salePrice);
 									const tiktokPrice = salePrice * (1 + commission / 100);
 									return (
 										<TableRow key={product.id}>
-											<TableCell className="font-medium">
-												<Link
-													to="/inventory/$productId"
-													params={{ productId: product.id }}
-													className="block max-w-[200px] truncate text-foreground hover:text-primary hover:underline"
-													title={product.name}
-												>
-													{product.name}
-												</Link>
-												<div className="font-mono text-xs text-muted-foreground">
-													{product.sku}
-												</div>
-											</TableCell>
-											<TableCell className="text-sm text-muted-foreground">
-												{product.purchaseOrder?.supplier.name ?? "—"}
-											</TableCell>
-											<TableCell className="text-center font-mono text-sm tabular-nums font-semibold text-foreground">
-												{product.quantity}
-											</TableCell>
-											<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
-												{currencyFormatter.format(unitCost)}
-											</TableCell>
-											<TableCell className="text-end font-mono text-sm tabular-nums font-medium text-foreground">
-												{currencyFormatter.format(salePrice)}
-											</TableCell>
-											<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
-												{currencyFormatter.format(tiktokPrice)}
-											</TableCell>
-											<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
-												{margin.toFixed(0)}%
-											</TableCell>
-											<TableCell className="text-center">
-												<ProductStatusBadge quantity={product.quantity} />
-											</TableCell>
+											{isColumnVisible("name") ? (
+												<TableCell className="min-w-[320px] whitespace-normal font-medium">
+													<div className="flex items-center gap-2.5">
+														<ProductImagePreview
+															alt={`Imagem de ${product.name}`}
+															src={product.photoThumbnailUrl}
+															className="size-11"
+														/>
+														<div className="min-w-0">
+															<button
+																type="button"
+																onClick={() => handleOpenProduct(product.id)}
+																className="block w-full text-left leading-snug text-foreground transition-colors hover:text-primary hover:underline"
+															>
+																{product.name}
+															</button>
+															<div className="font-mono text-xs text-muted-foreground">
+																{product.sku}
+															</div>
+														</div>
+													</div>
+												</TableCell>
+											) : null}
+											{isColumnVisible("order") ? (
+												<TableCell className="text-sm text-muted-foreground">
+													<span
+														className="block max-w-[140px] truncate"
+														title={product.purchaseOrder?.supplier.name}
+													>
+														{product.purchaseOrder?.supplier.name ?? "—"}
+													</span>
+												</TableCell>
+											) : null}
+											{isColumnVisible("quantity") ? (
+												<TableCell className="text-end font-mono text-sm tabular-nums font-semibold text-foreground">
+													{product.quantity}
+												</TableCell>
+											) : null}
+											{isColumnVisible("unitCost") ? (
+												<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
+													{currencyFormatter.format(unitCost)}
+												</TableCell>
+											) : null}
+											{isColumnVisible("salePrice") ? (
+												<TableCell className="text-end font-mono text-sm tabular-nums font-medium text-foreground">
+													{currencyFormatter.format(salePrice)}
+												</TableCell>
+											) : null}
+											{isColumnVisible("tiktokPrice") ? (
+												<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
+													{currencyFormatter.format(tiktokPrice)}
+												</TableCell>
+											) : null}
+											{isColumnVisible("margin") ? (
+												<TableCell className="text-end font-mono text-sm tabular-nums text-muted-foreground">
+													{margin.toFixed(0)}%
+												</TableCell>
+											) : null}
+											{isColumnVisible("status") ? (
+												<TableCell className="text-center">
+													<ProductStatusBadge quantity={product.quantity} />
+												</TableCell>
+											) : null}
 										</TableRow>
 									);
 								})}
@@ -294,25 +604,41 @@ export function ProductsTable() {
 					</div>
 				)}
 
-				{!isLoading && filtered.length > 0 && (
+				{!isLoading && total > 0 && (
 					<div className="flex items-center justify-between pt-2">
-						<p className="flex gap-2 text-sm text-muted-foreground">
-							Mostrando
-							<span className="font-mono font-semibold tabular-nums text-foreground">
-								{paginated.length}
-							</span>
-							de
-							<span className="font-mono font-semibold tabular-nums text-foreground">
-								{filtered.length}
-							</span>
-							produto{filtered.length !== 1 ? "s" : ""}
-						</p>
+						<div className="flex items-center gap-4">
+							<p className="flex gap-2 text-sm text-muted-foreground">
+								Mostrando
+								<span className="font-mono font-semibold tabular-nums text-foreground">
+									{products.length}
+								</span>
+								de
+								<span className="font-mono font-semibold tabular-nums text-foreground">
+									{total}
+								</span>
+								produto{total !== 1 ? "s" : ""}
+							</p>
+
+							<div className="flex items-center gap-2">
+								<span className="text-sm text-muted-foreground">
+									Por página
+								</span>
+								<NumberField
+									aria-label="Itens por página"
+									minValue={1}
+									maxValue={999}
+									value={pageSize}
+									onChange={(value) => handlePageSizeChange(value)}
+									className="w-24"
+								/>
+							</div>
+						</div>
 
 						<div className="flex items-center gap-2">
 							<Button
 								variant="outline"
 								disabled={currentPage <= 1}
-								onClick={() => setPage((value) => Math.max(1, value - 1))}
+								onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
 							>
 								Anterior
 							</Button>
@@ -323,7 +649,7 @@ export function ProductsTable() {
 								variant="outline"
 								disabled={currentPage >= totalPages}
 								onClick={() =>
-									setPage((value) => Math.min(totalPages, value + 1))
+									handlePageChange(Math.min(totalPages, currentPage + 1))
 								}
 							>
 								Próxima

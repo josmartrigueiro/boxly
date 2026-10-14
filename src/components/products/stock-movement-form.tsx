@@ -1,6 +1,7 @@
 import { getLocalTimeZone, today } from "@internationalized/date";
-import { useForm } from "@tanstack/react-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm, useStore } from "@tanstack/react-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import {
 	FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NumberField } from "@/components/ui/number-field";
+import { CurrencyField, NumberField } from "@/components/ui/number-field";
 import {
 	Select,
 	SelectContent,
@@ -20,7 +21,18 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { productQueryKey, productsQueryKey } from "@/lib/products";
+import {
+	getMargin,
+	getPriceFromMargin,
+	type getProduct,
+	productQueryKey,
+	productsQueryKey,
+} from "@/lib/products";
+import { computeChargesTotal } from "@/lib/purchase-order-totals";
+import {
+	listPurchaseOrders,
+	purchaseOrdersQueryKey,
+} from "@/lib/purchase-orders";
 import {
 	createStockMovement,
 	stockMovementsQueryKey,
@@ -38,16 +50,33 @@ const VALUE_LABEL: Record<string, string> = {
 	ajuste: "Quantidade contada (total)",
 };
 
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+	style: "currency",
+	currency: "BRL",
+});
+
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
+
+type Product = NonNullable<Awaited<ReturnType<typeof getProduct>>>;
+
 type StockMovementFormProps = {
 	productId: string;
+	product: Product;
 	onSuccess?: () => void;
 };
 
 export function StockMovementForm({
 	productId,
+	product,
 	onSuccess,
 }: StockMovementFormProps) {
 	const queryClient = useQueryClient();
+	const [salePriceTouched, setSalePriceTouched] = useState(false);
+
+	const { data: purchaseOrders = [] } = useQuery({
+		queryKey: purchaseOrdersQueryKey,
+		queryFn: () => listPurchaseOrders(),
+	});
 
 	const mutation = useMutation({
 		mutationFn: createStockMovement,
@@ -59,6 +88,7 @@ export function StockMovementForm({
 			queryClient.invalidateQueries({ queryKey: productsQueryKey });
 			toast.success("Movimentação registrada!");
 			form.reset();
+			setSalePriceTouched(false);
 			onSuccess?.();
 		},
 		onError: (error) => {
@@ -74,8 +104,12 @@ export function StockMovementForm({
 			value: 0,
 			date: today(getLocalTimeZone()),
 			reason: "",
+			unitCost: 0,
+			purchaseOrderId: "",
+			salePrice: 0,
 		},
 		onSubmit: async ({ value }) => {
+			const isRestock = value.type === "entrada" && value.unitCost > 0;
 			await mutation.mutateAsync({
 				data: {
 					productId,
@@ -83,10 +117,81 @@ export function StockMovementForm({
 					value: value.value,
 					date: value.date.toString(),
 					reason: value.reason,
+					...(isRestock ? { unitCost: value.unitCost } : {}),
+					...(isRestock && value.purchaseOrderId
+						? { purchaseOrderId: value.purchaseOrderId }
+						: {}),
+					...(isRestock && value.salePrice > 0
+						? { salePrice: value.salePrice }
+						: {}),
 				},
 			});
 		},
 	});
+
+	const [type, quantity, unitCost, purchaseOrderId] = useStore(
+		form.store,
+		(state) => [
+			state.values.type,
+			state.values.value,
+			state.values.unitCost,
+			state.values.purchaseOrderId,
+		],
+	);
+
+	const currentUnitCost = Number(product.unitCost);
+	const currentMargin = getMargin(currentUnitCost, Number(product.salePrice));
+
+	const preview = useMemo(() => {
+		if (type !== "entrada" || !unitCost || unitCost <= 0) return null;
+
+		const totalQuantity = product.quantity + quantity;
+		const newAvgCost =
+			totalQuantity > 0
+				? (product.quantity * currentUnitCost + quantity * unitCost) /
+					totalQuantity
+				: unitCost;
+
+		const order = purchaseOrders.find((item) => item.id === purchaseOrderId);
+		let freightPerUnit = 0;
+		if (order && quantity > 0) {
+			const orderCharges = computeChargesTotal(
+				order.charges,
+				Number(order.productsValue),
+			);
+			const thisValue = unitCost * quantity;
+			const totalValue = Number(order.productsValue);
+			const freightShare =
+				totalValue > 0 ? orderCharges * (thisValue / totalValue) : 0;
+			freightPerUnit = freightShare / quantity;
+		}
+
+		const suggestedPrice =
+			Math.round(
+				getPriceFromMargin(newAvgCost + freightPerUnit, currentMargin) * 100,
+			) / 100;
+
+		return {
+			newAvgCost: Math.round(newAvgCost * 100) / 100,
+			freightPerUnit,
+			suggestedPrice,
+		};
+	}, [
+		type,
+		unitCost,
+		quantity,
+		purchaseOrderId,
+		purchaseOrders,
+		product.quantity,
+		currentUnitCost,
+		currentMargin,
+	]);
+
+	useEffect(() => {
+		if (!salePriceTouched && preview) {
+			form.setFieldValue("salePrice", preview.suggestedPrice);
+		}
+	}, [preview, salePriceTouched, form.setFieldValue]);
 
 	return (
 		<form
@@ -181,6 +286,97 @@ export function StockMovementForm({
 						)}
 					</form.Field>
 				</div>
+
+				<form.Subscribe selector={(state) => state.values.type}>
+					{(currentType) =>
+						currentType === "entrada" ? (
+							<>
+								<div className="grid grid-cols-2 gap-4">
+									<form.Field name="unitCost">
+										{(field) => (
+											<Field>
+												<FieldLabel htmlFor={field.name}>
+													Custo unitário desta entrada
+												</FieldLabel>
+												<CurrencyField
+													id={field.name}
+													value={field.state.value}
+													onChange={(value) => field.handleChange(value)}
+												/>
+											</Field>
+										)}
+									</form.Field>
+
+									<form.Field name="purchaseOrderId">
+										{(field) => (
+											<Field>
+												<FieldLabel htmlFor={field.name}>
+													Pedido de compra vinculado
+												</FieldLabel>
+												<Select
+													placeholder="Nenhum"
+													value={field.state.value}
+													onValueChange={(value) =>
+														field.handleChange(value as string)
+													}
+												>
+													<SelectTrigger id={field.name}>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{purchaseOrders.map((order) => (
+															<SelectItem key={order.id} value={order.id}>
+																{order.supplier.name} —{" "}
+																{dateFormatter.format(
+																	new Date(order.orderDate),
+																)}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</Field>
+										)}
+									</form.Field>
+								</div>
+
+								{preview ? (
+									<div className="flex flex-col gap-3 rounded-md border border-dashed border-border/60 p-3">
+										<p className="text-sm text-muted-foreground">
+											Custo médio: {currencyFormatter.format(currentUnitCost)} →{" "}
+											<span className="font-medium text-foreground">
+												{currencyFormatter.format(preview.newAvgCost)}
+											</span>
+											{preview.freightPerUnit > 0 ? (
+												<>
+													{" "}
+													(+{currencyFormatter.format(preview.freightPerUnit)}{" "}
+													de frete ratado)
+												</>
+											) : null}
+										</p>
+										<form.Field name="salePrice">
+											{(field) => (
+												<Field>
+													<FieldLabel htmlFor={field.name}>
+														Novo preço de venda sugerido
+													</FieldLabel>
+													<CurrencyField
+														id={field.name}
+														value={field.state.value}
+														onChange={(value) => {
+															field.handleChange(value);
+															setSalePriceTouched(true);
+														}}
+													/>
+												</Field>
+											)}
+										</form.Field>
+									</div>
+								) : null}
+							</>
+						) : null
+					}
+				</form.Subscribe>
 
 				<form.Field name="reason">
 					{(field) => (

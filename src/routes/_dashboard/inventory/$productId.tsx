@@ -1,13 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, History, Package, Plus } from "lucide-react";
+import {
+	createFileRoute,
+	Link,
+	Outlet,
+	useMatchRoute,
+	useNavigate,
+} from "@tanstack/react-router";
+import {
+	ArrowLeft,
+	History,
+	MoreVertical,
+	Package,
+	Pencil,
+	Plus,
+} from "lucide-react";
 import { useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
+import { MovementRowActions } from "@/components/products/movement-row-actions";
+import { ProductImagePreview } from "@/components/products/product-image-preview";
 import { ProductStatusBadge } from "@/components/products/product-status-badge";
 import { StockMovementForm } from "@/components/products/stock-movement-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
@@ -16,6 +31,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
 	Table,
 	TableBody,
@@ -30,6 +51,7 @@ import {
 	listMovementsForProduct,
 	stockMovementsQueryKey,
 } from "@/lib/stock-movements";
+import { cn } from "@/lib/utils";
 
 const MOVEMENT_LABELS: Record<
 	"entrada" | "saida" | "ajuste",
@@ -53,20 +75,33 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
 
 function ProductDetailPage() {
 	const { productId } = Route.useParams();
+	const navigate = useNavigate();
+	const matchRoute = useMatchRoute();
+	const isEditing = Boolean(
+		matchRoute({
+			to: "/inventory/$productId/edit",
+			params: { productId },
+		}),
+	);
 	const [movementDialogOpen, setMovementDialogOpen] = useState(false);
 	const { commission } = useTiktokCommission();
 
 	const { data: product, isLoading } = useQuery({
 		queryKey: productQueryKey(productId),
 		queryFn: () => getProduct({ data: { id: productId } }),
+		enabled: !isEditing,
 		retry: false,
 	});
 
 	const { data: movements = [] } = useQuery({
 		queryKey: stockMovementsQueryKey(productId),
 		queryFn: () => listMovementsForProduct({ data: { productId } }),
-		enabled: !!product,
+		enabled: !!product && !isEditing,
 	});
+
+	if (isEditing) {
+		return <Outlet />;
+	}
 
 	if (isLoading) {
 		return (
@@ -105,6 +140,28 @@ function ProductDetailPage() {
 	return (
 		<>
 			<AppHeader title={product.name}>
+				<DropdownMenu>
+					<DropdownMenuTrigger
+						aria-label="Mais opções"
+						className={cn(buttonVariants({ variant: "outline", size: "icon" }))}
+					>
+						<MoreVertical className="size-4" />
+					</DropdownMenuTrigger>
+					<DropdownMenuContent>
+						<DropdownMenuItem
+							onClick={() =>
+								navigate({
+									to: "/inventory/$productId/edit",
+									params: { productId: product.id },
+								})
+							}
+						>
+							<Pencil />
+							Editar produto
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+
 				<Dialog open={movementDialogOpen} onOpenChange={setMovementDialogOpen}>
 					<Button
 						size="sm"
@@ -123,6 +180,7 @@ function ProductDetailPage() {
 						</DialogHeader>
 						<StockMovementForm
 							productId={product.id}
+							product={product}
 							onSuccess={() => setMovementDialogOpen(false)}
 						/>
 					</DialogContent>
@@ -151,11 +209,21 @@ function ProductDetailPage() {
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-3">
-							<div>
-								<p className="font-medium text-foreground">{product.name}</p>
-								<p className="font-mono text-xs text-muted-foreground">
-									{product.sku}
-								</p>
+							<div className="flex items-center gap-3">
+								<ProductImagePreview
+									alt={`Imagem de ${product.name}`}
+									src={product.photoUrl}
+									className="size-16"
+								/>
+								<div className="min-w-0">
+									<p className="leading-snug font-medium text-foreground">
+										{product.name}
+									</p>
+									<p className="font-mono text-xs text-muted-foreground">
+										{product.sku}
+										{product.brand ? ` · ${product.brand}` : ""}
+									</p>
+								</div>
 							</div>
 							<div className="flex flex-wrap items-center gap-2">
 								<Badge variant="outline">{product.category}</Badge>
@@ -306,6 +374,9 @@ function ProductDetailPage() {
 											<TableHead className="text-end tracking-wide">
 												Quantidade
 											</TableHead>
+											<TableHead className="w-16 text-center tracking-wide">
+												Ações
+											</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -331,6 +402,12 @@ function ProductDetailPage() {
 													</TableCell>
 													<TableCell className="text-end font-mono text-sm font-semibold tabular-nums text-foreground">
 														{signedQuantity}
+													</TableCell>
+													<TableCell className="text-center">
+														<MovementRowActions
+															movement={movement}
+															productId={product.id}
+														/>
 													</TableCell>
 												</TableRow>
 											);

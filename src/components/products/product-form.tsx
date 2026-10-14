@@ -1,11 +1,13 @@
 import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { ImagePlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { HeaderActionsPortal } from "@/components/header-actions-context";
+import { StockMovementForm } from "@/components/products/stock-movement-form";
 import { Button } from "@/components/ui/button";
-import { Combobox } from "@/components/ui/combobox";
+import { Combobox, ComboboxSelect } from "@/components/ui/combobox";
 import { FieldError } from "@/components/ui/field";
 import { FieldRow, FieldRowDivider } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
@@ -21,12 +23,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useTiktokCommission } from "@/hooks/use-tiktok-commission";
 import { DEFAULT_PRODUCT_CATEGORIES } from "@/lib/product-categories";
+import type { getProduct } from "@/lib/products";
 import {
 	createProduct,
 	getMargin,
 	getPriceFromMargin,
 	listProducts,
+	productQueryKey,
 	productsQueryKey,
+	updateProduct,
 } from "@/lib/products";
 import { computeChargesTotal } from "@/lib/purchase-order-totals";
 import {
@@ -45,13 +50,60 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 	currency: "BRL",
 });
 
+type Product = NonNullable<Awaited<ReturnType<typeof getProduct>>>;
+
 type ProductFormProps = {
 	onSuccess?: () => void;
+	product?: Product;
 };
 
-export function ProductForm({ onSuccess }: ProductFormProps) {
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+function readImageAsDataUrl(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(String(reader.result));
+		reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+		reader.readAsDataURL(file);
+	});
+}
+
+async function createImageThumbnail(file: File): Promise<string> {
+	const sourceUrl = URL.createObjectURL(file);
+
+	try {
+		const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+			const element = new Image();
+			element.onload = () => resolve(element);
+			element.onerror = () =>
+				reject(new Error("Não foi possível processar a imagem."));
+			element.src = sourceUrl;
+		});
+		const maxSide = 160;
+		const scale = Math.min(
+			1,
+			maxSide / Math.max(image.naturalWidth, image.naturalHeight),
+		);
+		const canvas = document.createElement("canvas");
+		canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+		canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+		canvas
+			.getContext("2d")
+			?.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+		return canvas.toDataURL("image/webp", 0.72);
+	} finally {
+		URL.revokeObjectURL(sourceUrl);
+	}
+}
+
+export function ProductForm({ onSuccess, product }: ProductFormProps) {
+	const mode = product ? "edit" : "create";
 	const queryClient = useQueryClient();
-	const [salePriceTouched, setSalePriceTouched] = useState(false);
+	const [salePriceTouched, setSalePriceTouched] = useState(mode === "edit");
+	const [restockProductId, setRestockProductId] = useState("");
+	const imageInputRef = useRef<HTMLInputElement>(null);
 	const { commission } = useTiktokCommission();
 
 	const { data: purchaseOrders = [], isLoading: isLoadingOrders } = useQuery({
@@ -63,6 +115,15 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 		queryKey: productsQueryKey,
 		queryFn: () => listProducts(),
 	});
+
+	const restockTarget =
+		mode === "create"
+			? (existingProducts.find((item) => item.id === restockProductId) ?? null)
+			: null;
+
+	const restockOptions = [...existingProducts].sort((a, b) =>
+		a.name.localeCompare(b.name),
+	);
 
 	const purchaseOrderOptions = purchaseOrders.map((order) => ({
 		value: order.id,
@@ -78,7 +139,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 		.sort((a, b) => a.localeCompare(b))
 		.map((category) => ({ id: category, label: category }));
 
-	const mutation = useMutation({
+	const createMutation = useMutation({
 		mutationFn: createProduct,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: productsQueryKey });
@@ -92,22 +153,55 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 		},
 	});
 
+	const updateMutation = useMutation({
+		mutationFn: updateProduct,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: productsQueryKey });
+			if (product) {
+				queryClient.invalidateQueries({
+					queryKey: productQueryKey(product.id),
+				});
+			}
+			toast.success("Produto atualizado!");
+			onSuccess?.();
+		},
+		onError: (error) => {
+			toast.error(error.message || "Não foi possível atualizar o produto.");
+		},
+	});
+
+	const defaultUnitCost = product ? Number(product.unitCost) : 0;
+	const defaultSalePrice = product ? Number(product.salePrice) : 0;
+
 	const form = useForm({
 		defaultValues: {
-			name: "",
-			category: "",
-			unitCost: 0,
-			salePrice: 0,
-			margin: 50,
-			initialQuantity: 0,
-			purchaseOrderId: "",
-			photoUrl: "",
-			saleLink: "",
-			status: "active" as "active" | "inactive",
-			notes: "",
+			name: product?.name ?? "",
+			brand: product?.brand ?? "",
+			category: product?.category ?? "",
+			unitCost: defaultUnitCost,
+			salePrice: defaultSalePrice,
+			margin: product
+				? Math.round(getMargin(defaultUnitCost, defaultSalePrice) * 10) / 10
+				: 50,
+			tiktokPrice: product
+				? Math.round(defaultSalePrice * (1 + commission / 100) * 100) / 100
+				: 0,
+			initialQuantity: product?.receivedQuantity ?? 0,
+			purchaseOrderId: product?.purchaseOrderId ?? "",
+			photoUrl: product?.photoUrl ?? "",
+			photoThumbnailUrl: product?.photoThumbnailUrl ?? "",
+			saleLink: product?.saleLink ?? "",
+			status: product?.status ?? ("active" as "active" | "inactive"),
+			notes: product?.notes ?? "",
 		},
 		onSubmit: async ({ value }) => {
-			await mutation.mutateAsync({ data: value });
+			if (product) {
+				await updateMutation.mutateAsync({
+					data: { ...value, id: product.id },
+				});
+			} else {
+				await createMutation.mutateAsync({ data: value });
+			}
 		},
 	});
 
@@ -136,14 +230,7 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 			Number(order.productsValue),
 		);
 		const thisValue = unitCost * initialQuantity;
-		const siblingsValue = existingProducts
-			.filter((product) => product.purchaseOrderId === purchaseOrderId)
-			.reduce(
-				(sum, product) =>
-					sum + Number(product.unitCost) * (product.receivedQuantity ?? 0),
-				0,
-			);
-		const totalValue = thisValue + siblingsValue;
+		const totalValue = Number(order.productsValue);
 		const freightShare =
 			totalValue > 0 ? orderCharges * (thisValue / totalValue) : 0;
 		const freightPerUnit =
@@ -153,22 +240,67 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 			freightPerUnit,
 			suggestedPrice: getPriceFromMargin(unitCost + freightPerUnit, 50),
 		};
-	}, [
-		unitCost,
-		initialQuantity,
-		purchaseOrderId,
-		purchaseOrders,
-		existingProducts,
-	]);
+	}, [unitCost, initialQuantity, purchaseOrderId, purchaseOrders]);
 
 	useEffect(() => {
 		if (!salePriceTouched && pricing) {
+			const price = Math.round(pricing.suggestedPrice * 100) / 100;
+			form.setFieldValue("salePrice", price);
 			form.setFieldValue(
-				"salePrice",
-				Math.round(pricing.suggestedPrice * 100) / 100,
+				"tiktokPrice",
+				Math.round(price * (1 + commission / 100) * 100) / 100,
 			);
 		}
-	}, [pricing, salePriceTouched, form.setFieldValue]);
+	}, [pricing, salePriceTouched, commission, form.setFieldValue]);
+
+	const restockPicker = (
+		<>
+			<FieldRow
+				label="Reposição de produto existente"
+				description="Se essa entrada for reposição de um produto já cadastrado, procure e selecione ele aqui — vamos calcular o novo custo médio automaticamente em vez de duplicar o cadastro."
+				contentClassName="max-w-lg"
+			>
+				<div className="flex items-center gap-2">
+					<ComboboxSelect
+						placeholder="Buscar produto por nome ou SKU..."
+						items={restockOptions.map((option) => ({
+							id: option.id,
+							label: option.name,
+							description: option.sku,
+						}))}
+						value={restockProductId}
+						onValueChange={setRestockProductId}
+						className="flex-1"
+					/>
+					{restockProductId ? (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => setRestockProductId("")}
+						>
+							Cancelar
+						</Button>
+					) : null}
+				</div>
+			</FieldRow>
+
+			<FieldRowDivider />
+		</>
+	);
+
+	if (restockTarget) {
+		return (
+			<div className="flex flex-col gap-6">
+				{restockPicker}
+				<StockMovementForm
+					productId={restockTarget.id}
+					product={restockTarget}
+					onSuccess={onSuccess}
+				/>
+			</div>
+		);
+	}
 
 	return (
 		<form
@@ -180,6 +312,8 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 			}}
 			className="flex flex-col gap-6"
 		>
+			{mode === "create" ? restockPicker : null}
+
 			<form.Field
 				name="name"
 				validators={{
@@ -194,7 +328,11 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 						<FieldRow
 							label="Nome"
 							htmlFor={field.name}
-							description="Nome do produto como vai aparecer na listagem. O código/SKU é gerado automaticamente."
+							description={
+								mode === "edit"
+									? `SKU: ${product?.sku} (gerado automaticamente, não muda)`
+									: "Nome do produto como vai aparecer na listagem. O código/SKU é gerado automaticamente."
+							}
 							required
 						>
 							<Input
@@ -215,6 +353,25 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 						</FieldRow>
 					);
 				}}
+			</form.Field>
+
+			<FieldRowDivider />
+
+			<form.Field name="brand">
+				{(field) => (
+					<FieldRow
+						label="Marca"
+						htmlFor={field.name}
+						description="Marca/fabricante do produto, se houver"
+					>
+						<Input
+							id={field.name}
+							placeholder="Ex: SKYPAPER"
+							value={field.state.value}
+							onChange={(event) => field.handleChange(event.target.value)}
+						/>
+					</FieldRow>
+				)}
 			</form.Field>
 
 			<FieldRowDivider />
@@ -297,22 +454,33 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 
 			<FieldRowDivider />
 
-			<form.Field name="initialQuantity">
-				{(field) => (
-					<FieldRow
-						label="Quantidade inicial"
-						htmlFor={field.name}
-						description="Se preenchido, já registra uma entrada de estoque com esse valor. Também é usada para ratear o frete do pedido entre os produtos."
-					>
-						<NumberField
-							id={field.name}
-							minValue={0}
-							value={field.state.value}
-							onChange={(value) => field.handleChange(value)}
-						/>
-					</FieldRow>
-				)}
-			</form.Field>
+			{mode === "create" ? (
+				<form.Field name="initialQuantity">
+					{(field) => (
+						<FieldRow
+							label="Quantidade inicial"
+							htmlFor={field.name}
+							description="Se preenchido, já registra uma entrada de estoque com esse valor. Também é usada para ratear o frete do pedido entre os produtos."
+						>
+							<NumberField
+								id={field.name}
+								minValue={0}
+								value={field.state.value}
+								onChange={(value) => field.handleChange(value)}
+							/>
+						</FieldRow>
+					)}
+				</form.Field>
+			) : (
+				<FieldRow
+					label="Quantidade atual"
+					description="Para mudar o estoque, use 'Nova movimentação' na página do produto — editar aqui não altera a quantidade."
+				>
+					<p className="flex h-8 items-center text-sm font-medium text-foreground">
+						{product?.quantity} un.
+					</p>
+				</FieldRow>
+			)}
 
 			<FieldRowDivider />
 
@@ -359,38 +527,76 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 				{(priceField) => {
 					const hasError =
 						priceField.state.meta.isTouched && !priceField.state.meta.isValid;
-					const tiktokPrice = priceField.state.value * (1 + commission / 100);
 					const costWithFreight = unitCost + (pricing?.freightPerUnit ?? 0);
+					const commissionDivisor = 1 + commission / 100;
+
+					function applyFromSalePrice(value: number) {
+						priceField.handleChange(value);
+						setSalePriceTouched(true);
+						if (value > 0) {
+							form.setFieldValue(
+								"margin",
+								Math.round(getMargin(costWithFreight, value) * 10) / 10,
+							);
+							form.setFieldValue(
+								"tiktokPrice",
+								Math.round(value * commissionDivisor * 100) / 100,
+							);
+						}
+					}
+
+					function applyFromMargin(value: number) {
+						setSalePriceTouched(true);
+						if (costWithFreight <= 0) return;
+						const newPrice =
+							Math.round(getPriceFromMargin(costWithFreight, value) * 100) /
+							100;
+						form.setFieldValue("salePrice", newPrice);
+						form.setFieldValue(
+							"tiktokPrice",
+							Math.round(newPrice * commissionDivisor * 100) / 100,
+						);
+					}
+
+					function applyFromTiktokPrice(value: number) {
+						setSalePriceTouched(true);
+						if (value <= 0) return;
+						const newSalePrice =
+							Math.round((value / commissionDivisor) * 100) / 100;
+						form.setFieldValue("salePrice", newSalePrice);
+						form.setFieldValue(
+							"margin",
+							Math.round(getMargin(costWithFreight, newSalePrice) * 10) / 10,
+						);
+					}
+
 					return (
 						<FieldRow
-							label="Preço de venda e margem"
+							label="Preço de venda, margem e TikTok"
 							htmlFor={priceField.name}
-							description="Ligados: mude o preço ou a margem que o outro recalcula sozinho. Sugerido com 50% de margem sobre o custo já com o rateio do frete/taxas — ajuste livremente."
+							description={`Ligados: mude o preço, a margem ou o preço no TikTok (comissão de ${commission}%) que os outros recalculam sozinhos. Sugerido com 50% de margem sobre o custo já com o rateio do frete/taxas — ajuste livremente.`}
+							contentClassName="max-w-xl"
 							required
 						>
 							<div className="flex gap-2">
 								<div className="flex-1">
+									<span className="mb-1 block text-xs text-muted-foreground">
+										Venda
+									</span>
 									<CurrencyField
 										id={priceField.name}
 										value={priceField.state.value}
-										onChange={(value) => {
-											priceField.handleChange(value);
-											setSalePriceTouched(true);
-											if (value > 0) {
-												form.setFieldValue(
-													"margin",
-													Math.round(getMargin(costWithFreight, value) * 10) /
-														10,
-												);
-											}
-										}}
+										onChange={applyFromSalePrice}
 										onBlur={priceField.handleBlur}
 										invalid={hasError}
 									/>
 								</div>
 								<form.Field name="margin">
 									{(marginField) => (
-										<div className="w-28">
+										<div className="w-32">
+											<span className="mb-1 block text-xs text-muted-foreground">
+												Margem
+											</span>
 											<NumberField
 												aria-label="Margem"
 												suffix="%"
@@ -399,17 +605,24 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 												value={marginField.state.value}
 												onChange={(value) => {
 													marginField.handleChange(value);
-													setSalePriceTouched(true);
-													if (costWithFreight > 0) {
-														const newPrice = getPriceFromMargin(
-															costWithFreight,
-															value,
-														);
-														form.setFieldValue(
-															"salePrice",
-															Math.round(newPrice * 100) / 100,
-														);
-													}
+													applyFromMargin(value);
+												}}
+											/>
+										</div>
+									)}
+								</form.Field>
+								<form.Field name="tiktokPrice">
+									{(tiktokField) => (
+										<div className="flex-1">
+											<span className="mb-1 block text-xs text-muted-foreground">
+												TikTok
+											</span>
+											<CurrencyField
+												aria-label="Preço no TikTok Shop"
+												value={tiktokField.state.value}
+												onChange={(value) => {
+													tiktokField.handleChange(value);
+													applyFromTiktokPrice(value);
 												}}
 											/>
 										</div>
@@ -428,14 +641,6 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 									Frete/taxas ratados:{" "}
 									{currencyFormatter.format(pricing.freightPerUnit)}
 									/un.
-								</p>
-							) : null}
-							{priceField.state.value > 0 ? (
-								<p className="text-xs text-muted-foreground">
-									Preço no TikTok Shop (comissão de {commission}%):{" "}
-									<span className="font-medium text-foreground">
-										{currencyFormatter.format(tiktokPrice)}
-									</span>
 								</p>
 							) : null}
 						</FieldRow>
@@ -464,18 +669,102 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 						field.state.meta.isTouched && !field.state.meta.isValid;
 					return (
 						<FieldRow
-							label="Foto do produto"
+							label="Imagem do produto"
 							htmlFor={field.name}
-							description="Link de uma imagem do produto (upload de arquivo ainda não disponível)"
+							description="Envie JPG, PNG ou WebP de até 2 MB. Você também pode usar um link."
 						>
-							<Input
-								id={field.name}
-								placeholder="https://..."
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-								aria-invalid={hasError}
-							/>
+							<div className="flex items-start gap-3">
+								{field.state.value ? (
+									<div className="relative size-16 shrink-0 overflow-hidden rounded-md border border-border/60 bg-muted/40">
+										<img
+											src={field.state.value}
+											alt="Prévia da imagem do produto"
+											className="size-full object-cover"
+										/>
+									</div>
+								) : (
+									<div className="flex size-16 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40 text-muted-foreground">
+										<ImagePlus className="size-4" />
+									</div>
+								)}
+
+								<div className="min-w-0 flex-1 space-y-2">
+									<div className="flex items-center gap-2">
+										<Input
+											ref={imageInputRef}
+											id={field.name}
+											type="file"
+											accept="image/jpeg,image/png,image/webp"
+											className="min-w-0 flex-1"
+											onChange={async (event) => {
+												const file = event.target.files?.[0];
+												if (!file) return;
+												if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+													toast.error("Use uma imagem JPG, PNG ou WebP.");
+													event.target.value = "";
+													return;
+												}
+												if (file.size > MAX_IMAGE_SIZE) {
+													toast.error("A imagem deve ter no máximo 2 MB.");
+													event.target.value = "";
+													return;
+												}
+												try {
+													const [photoUrl, photoThumbnailUrl] =
+														await Promise.all([
+															readImageAsDataUrl(file),
+															createImageThumbnail(file),
+														]);
+													field.handleChange(photoUrl);
+													form.setFieldValue(
+														"photoThumbnailUrl",
+														photoThumbnailUrl,
+													);
+												} catch (error) {
+													toast.error(
+														error instanceof Error
+															? error.message
+															: "Não foi possível adicionar a imagem.",
+													);
+												}
+											}}
+										/>
+										{field.state.value ? (
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												aria-label="Remover imagem"
+												onClick={() => {
+													field.handleChange("");
+													form.setFieldValue("photoThumbnailUrl", "");
+													if (imageInputRef.current)
+														imageInputRef.current.value = "";
+												}}
+											>
+												<X className="size-4" />
+											</Button>
+										) : null}
+									</div>
+									<Input
+										placeholder="Ou cole o link da imagem: https://..."
+										value={
+											field.state.value.startsWith("data:")
+												? ""
+												: field.state.value
+										}
+										onBlur={field.handleBlur}
+										onChange={(event) => {
+											field.handleChange(event.target.value);
+											form.setFieldValue(
+												"photoThumbnailUrl",
+												event.target.value,
+											);
+										}}
+										aria-invalid={hasError}
+									/>
+								</div>
+							</div>
 							{hasError ? (
 								<FieldError
 									errors={field.state.meta.errors.map((message) => ({
@@ -593,7 +882,11 @@ export function ProductForm({ onSuccess }: ProductFormProps) {
 							onClick={() => form.handleSubmit()}
 							disabled={!canSubmit || isSubmitting}
 						>
-							{isSubmitting ? "Salvando..." : "Cadastrar produto"}
+							{isSubmitting
+								? "Salvando..."
+								: mode === "edit"
+									? "Salvar alterações"
+									: "Cadastrar produto"}
 						</Button>
 					</HeaderActionsPortal>
 				)}

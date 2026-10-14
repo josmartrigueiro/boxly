@@ -1,15 +1,39 @@
+import * as Sentry from "@sentry/tanstackstart-react";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { asc, eq, like } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "#/db";
-import { products } from "#/db/schema";
+import { products, purchaseOrders, suppliers } from "#/db/schema";
 import { auth } from "#/lib/auth";
 import { createStockMovement } from "#/lib/stock-movements";
 
 export const productsQueryKey = ["products"] as const;
 export const productQueryKey = (id: string) => ["products", id] as const;
+
+const inventorySortValues = [
+	"createdAt",
+	"name",
+	"supplier",
+	"quantity",
+	"unitCost",
+] as const;
+
+export const inventorySearchInputSchema = z.object({
+	q: z.string().max(120).catch("").default(""),
+	category: z.string().catch("all").default("all"),
+	page: z.coerce.number().int().min(1).catch(1).default(1),
+	pageSize: z.coerce.number().int().min(1).max(999).catch(100).default(100),
+	sort: z.enum(inventorySortValues).catch("createdAt").default("createdAt"),
+	dir: z.enum(["asc", "desc"]).catch("desc").default("desc"),
+	lowStockThreshold: z.coerce.number().int().min(1).catch(5).default(5),
+});
+
+export type InventorySearchInput = z.infer<typeof inventorySearchInputSchema>;
+
+export const inventoryQueryKey = (input: InventorySearchInput) =>
+	["inventory", input] as const;
 
 export type StockStatus = "esgotado" | "baixo" | "em_estoque";
 
@@ -85,14 +109,37 @@ async function generateUniqueSku(category: string): Promise<string> {
 
 const productStatusValues = ["active", "inactive"] as const;
 
+const MAX_PRODUCT_IMAGE_BYTES = 2 * 1024 * 1024;
+const dataImagePattern =
+	/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+const productImageSourceSchema = z.string().refine((value) => {
+	if (!value) return true;
+
+	if (value.startsWith("data:")) {
+		if (!dataImagePattern.test(value)) return false;
+		const base64 = value.slice(value.indexOf(",") + 1);
+		return Math.floor((base64.length * 3) / 4) <= MAX_PRODUCT_IMAGE_BYTES;
+	}
+
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" || url.protocol === "http:";
+	} catch {
+		return false;
+	}
+}, "Use uma URL válida ou uma imagem JPG, PNG ou WebP de até 2 MB.");
+
 const createProductSchema = z.object({
 	name: z.string().min(1, "Informe o nome do produto"),
+	brand: z.string().optional(),
 	category: z.string().min(1, "Informe a categoria/linha"),
 	unitCost: z.coerce.number().min(0.01, "Informe o custo unitário"),
 	salePrice: z.coerce.number().min(0.01, "Informe o preço de venda"),
 	initialQuantity: z.coerce.number().int().min(0).default(0),
 	purchaseOrderId: z.string().uuid().optional().or(z.literal("")),
-	photoUrl: z.string().url("URL inválida").optional().or(z.literal("")),
+	photoUrl: productImageSourceSchema.optional().or(z.literal("")),
+	photoThumbnailUrl: productImageSourceSchema.optional().or(z.literal("")),
 	saleLink: z.string().url("URL inválida").optional().or(z.literal("")),
 	status: z.enum(productStatusValues).default("active"),
 	notes: z.string().optional(),
@@ -102,10 +149,125 @@ export const listProducts = createServerFn({ method: "GET" }).handler(
 	async () => {
 		return db.query.products.findMany({
 			with: { purchaseOrder: { with: { supplier: true } } },
-			orderBy: [asc(products.name)],
+			orderBy: [desc(products.createdAt)],
 		});
 	},
 );
+
+/**
+ * Consulta a listagem do estoque já filtrada e paginada no banco. Isso evita
+ * transferir o catálogo inteiro a cada busca, ordenação ou troca de página.
+ */
+export const listInventory = createServerFn({ method: "GET" })
+	.inputValidator(inventorySearchInputSchema)
+	.handler(({ data }) =>
+		Sentry.startSpan({ name: "Listar estoque" }, async () => {
+			const term = data.q.trim();
+			const conditions = [
+				term
+					? or(
+							ilike(products.name, `%${term}%`),
+							ilike(products.sku, `%${term}%`),
+						)
+					: undefined,
+				data.category !== "all"
+					? eq(products.category, data.category)
+					: undefined,
+			];
+			const where = and(...conditions);
+			const orderDirection = data.dir === "asc" ? asc : desc;
+			const orderBy = (() => {
+				switch (data.sort) {
+					case "name":
+						return [orderDirection(products.name), desc(products.id)] as const;
+					case "supplier":
+						return [orderDirection(suppliers.name), desc(products.id)] as const;
+					case "quantity":
+						return [
+							orderDirection(products.quantity),
+							desc(products.id),
+						] as const;
+					case "unitCost":
+						return [
+							orderDirection(products.unitCost),
+							desc(products.id),
+						] as const;
+					default:
+						return [
+							orderDirection(products.createdAt),
+							desc(products.id),
+						] as const;
+				}
+			})();
+
+			const [rows, totalRows, categoryRows, totals] = await Promise.all([
+				db
+					.select({
+						id: products.id,
+						sku: products.sku,
+						name: products.name,
+						category: products.category,
+						unitCost: products.unitCost,
+						salePrice: products.salePrice,
+						quantity: products.quantity,
+						status: products.status,
+						photoThumbnailUrl: products.photoThumbnailUrl,
+						purchaseOrderId: products.purchaseOrderId,
+						supplierName: suppliers.name,
+					})
+					.from(products)
+					.leftJoin(
+						purchaseOrders,
+						eq(products.purchaseOrderId, purchaseOrders.id),
+					)
+					.leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+					.where(where)
+					.orderBy(...orderBy)
+					.limit(data.pageSize)
+					.offset((data.page - 1) * data.pageSize),
+				db.select({ value: count() }).from(products).where(where),
+				db
+					.selectDistinct({ category: products.category })
+					.from(products)
+					.orderBy(asc(products.category)),
+				db
+					.select({
+						total: count(),
+						low: sql<number>`count(*) filter (where ${products.quantity} > 0 and ${products.quantity} <= ${data.lowStockThreshold})`,
+						out: sql<number>`count(*) filter (where ${products.quantity} <= 0)`,
+						value: sql<string>`coalesce(sum(${products.quantity} * ${products.unitCost}), 0)`,
+					})
+					.from(products),
+			]);
+
+			return {
+				items: rows.map((row) => ({
+					id: row.id,
+					sku: row.sku,
+					name: row.name,
+					category: row.category,
+					unitCost: row.unitCost,
+					salePrice: row.salePrice,
+					quantity: row.quantity,
+					status: row.status,
+					photoThumbnailUrl: row.photoThumbnailUrl,
+					purchaseOrderId: row.purchaseOrderId,
+					purchaseOrder:
+						row.purchaseOrderId && row.supplierName
+							? { supplier: { name: row.supplierName } }
+							: null,
+				})),
+				total: Number(totalRows[0]?.value ?? 0),
+				categories: categoryRows.map((row) => row.category),
+				metrics: {
+					total: Number(totals[0]?.total ?? 0),
+					low: Number(totals[0]?.low ?? 0),
+					out: Number(totals[0]?.out ?? 0),
+					value: Number(totals[0]?.value ?? 0),
+				},
+			};
+		}),
+	);
 
 export const getProduct = createServerFn({ method: "GET" })
 	.inputValidator(z.object({ id: z.string().uuid() }))
@@ -114,6 +276,54 @@ export const getProduct = createServerFn({ method: "GET" })
 			where: eq(products.id, data.id),
 			with: { purchaseOrder: { with: { supplier: true } } },
 		});
+		if (!product) {
+			throw new Error("Produto não encontrado");
+		}
+		return product;
+	});
+
+const updateProductSchema = z.object({
+	id: z.string().uuid(),
+	name: z.string().min(1, "Informe o nome do produto"),
+	brand: z.string().optional(),
+	category: z.string().min(1, "Informe a categoria/linha"),
+	unitCost: z.coerce.number().min(0.01, "Informe o custo unitário"),
+	salePrice: z.coerce.number().min(0.01, "Informe o preço de venda"),
+	purchaseOrderId: z.string().uuid().optional().or(z.literal("")),
+	photoUrl: productImageSourceSchema.optional().or(z.literal("")),
+	photoThumbnailUrl: productImageSourceSchema.optional().or(z.literal("")),
+	saleLink: z.string().url("URL inválida").optional().or(z.literal("")),
+	status: z.enum(productStatusValues).default("active"),
+	notes: z.string().optional(),
+});
+
+export const updateProduct = createServerFn({ method: "POST" })
+	.inputValidator(updateProductSchema)
+	.handler(async ({ data }) => {
+		const headers = getRequestHeaders();
+		const session = await auth.api.getSession({ headers });
+		if (!session) {
+			throw new Error("Unauthorized");
+		}
+
+		const [product] = await db
+			.update(products)
+			.set({
+				name: data.name,
+				brand: data.brand || null,
+				category: data.category,
+				unitCost: data.unitCost.toFixed(6),
+				salePrice: data.salePrice.toFixed(2),
+				purchaseOrderId: data.purchaseOrderId || null,
+				photoUrl: data.photoUrl || null,
+				photoThumbnailUrl: data.photoThumbnailUrl || null,
+				saleLink: data.saleLink || null,
+				status: data.status,
+				notes: data.notes || null,
+			})
+			.where(eq(products.id, data.id))
+			.returning();
+
 		if (!product) {
 			throw new Error("Produto não encontrado");
 		}
@@ -140,12 +350,14 @@ export const createProduct = createServerFn({ method: "POST" })
 					.values({
 						sku,
 						name: data.name,
+						brand: data.brand || null,
 						category: data.category,
-						unitCost: data.unitCost.toFixed(2),
+						unitCost: data.unitCost.toFixed(6),
 						salePrice: data.salePrice.toFixed(2),
 						receivedQuantity: data.initialQuantity,
 						purchaseOrderId: data.purchaseOrderId || null,
 						photoUrl: data.photoUrl || null,
+						photoThumbnailUrl: data.photoThumbnailUrl || null,
 						saleLink: data.saleLink || null,
 						status: data.status,
 						notes: data.notes || null,

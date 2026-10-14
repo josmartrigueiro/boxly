@@ -40,6 +40,47 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --animate-flash-highlight: flash-highlight 0.7s ease-out;
+  --animate-pulse-once: pulse-once 0.4s cubic-bezier(.23, 1, .32, 1);
+  --animate-basket-bounce: basket-bounce 0.5s cubic-bezier(.23, 1, .32, 1);
+}
+
+@keyframes flash-highlight {
+  0% {
+    background-color: color-mix(in oklch, var(--color-primary) 20%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes pulse-once {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.06);
+    color: var(--color-primary);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes basket-bounce {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 :root {
