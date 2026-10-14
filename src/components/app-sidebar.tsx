@@ -7,6 +7,7 @@ import {
 	LogOut,
 	Package,
 	Settings,
+	ShoppingCart,
 } from "lucide-react";
 
 import {
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
 	{ to: "/", label: "Dashboard", icon: LayoutDashboard },
 	{ to: "/inventory", label: "Estoque", icon: Package },
 	{ to: "/purchase-orders", label: "Pedidos", icon: ClipboardList },
+	{ to: "/sales", label: "Vendas", icon: ShoppingCart },
 	{ to: "/suppliers", label: "Fornecedores", icon: Building2 },
 	{ to: "/settings", label: "Configurações", icon: Settings },
 ] as const;
