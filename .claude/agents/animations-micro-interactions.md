@@ -96,7 +96,7 @@ ease-in-circ: cubic-bezier(.6, .04, .98, .335)
 ```tsx
 <button className="
   transition-colors duration-200 
-  [@media(hover:hover)and(pointer:fine)]:hover:bg-blue-600
+  [@media(hover:hover)_and_(pointer:fine)]:hover:bg-blue-600
 ">
   Touch-friendly
 </button>
