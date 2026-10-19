@@ -228,6 +228,12 @@ function ProductDetailPage() {
 							<div className="flex flex-wrap items-center gap-2">
 								<Badge variant="outline">{product.category}</Badge>
 								<ProductStatusBadge quantity={product.quantity} />
+								{product.tangerinas > 0 ? (
+									<Badge variant="secondary">
+										{product.tangerinas}{" "}
+										{product.tangerinas === 1 ? "Tangerina" : "Tangerinas"}
+									</Badge>
+								) : null}
 								{product.status === "inactive" ? (
 									<Badge variant="destructive">Inativo</Badge>
 								) : null}
@@ -291,6 +297,14 @@ function ProductDetailPage() {
 								</span>
 								<span className="font-mono tabular-nums text-foreground">
 									{currencyFormatter.format(tiktokPrice)}
+								</span>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">
+									Tangerinas para kits
+								</span>
+								<span className="font-mono tabular-nums text-foreground">
+									{product.tangerinas} por unidade
 								</span>
 							</div>
 						</CardContent>

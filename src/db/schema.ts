@@ -199,6 +199,7 @@ export const products = pgTable("products", {
 	category: text("category").notNull(),
 	unitCost: numeric("unit_cost", { precision: 12, scale: 6 }).notNull(),
 	salePrice: numeric("sale_price", { precision: 10, scale: 2 }).notNull(),
+	tangerinas: integer("tangerinas").notNull().default(0),
 	quantity: integer("quantity").notNull().default(0),
 	receivedQuantity: integer("received_quantity"),
 	purchaseOrderId: uuid("purchase_order_id").references(

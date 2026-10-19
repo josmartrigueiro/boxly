@@ -180,6 +180,7 @@ export function ProductForm({ onSuccess, product }: ProductFormProps) {
 			category: product?.category ?? "",
 			unitCost: defaultUnitCost,
 			salePrice: defaultSalePrice,
+			tangerinas: product?.tangerinas ?? 0,
 			margin: product
 				? Math.round(getMargin(defaultUnitCost, defaultSalePrice) * 10) / 10
 				: 50,
@@ -369,6 +370,28 @@ export function ProductForm({ onSuccess, product }: ProductFormProps) {
 							placeholder="Ex: SKYPAPER"
 							value={field.state.value}
 							onChange={(event) => field.handleChange(event.target.value)}
+						/>
+					</FieldRow>
+				)}
+			</form.Field>
+
+			<FieldRowDivider />
+
+			<form.Field name="tangerinas">
+				{(field) => (
+					<FieldRow
+						label="Tangerinas para kits"
+						htmlFor={field.name}
+						description="Quantas Tangerinas cada unidade consome na montagem de kits. Deixe em 0 se este produto não participar."
+						contentClassName="max-w-xs"
+					>
+						<NumberField
+							id={field.name}
+							minValue={0}
+							maxValue={99}
+							suffix={field.state.value === 1 ? "Tangerina" : "Tangerinas"}
+							value={field.state.value}
+							onChange={(value) => field.handleChange(value)}
 						/>
 					</FieldRow>
 				)}

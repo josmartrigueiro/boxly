@@ -54,6 +54,7 @@ type ProductColumnKey =
 	| "name"
 	| "order"
 	| "quantity"
+	| "tangerinas"
 	| "unitCost"
 	| "salePrice"
 	| "tiktokPrice"
@@ -73,6 +74,7 @@ const DEFAULT_COLUMNS: ProductColumnKey[] = [
 	"name",
 	"order",
 	"quantity",
+	"tangerinas",
 	"unitCost",
 	"salePrice",
 	"tiktokPrice",
@@ -83,6 +85,7 @@ const COLUMN_OPTIONS: Array<{ key: ProductColumnKey; label: string }> = [
 	{ key: "name", label: "Nome e imagem" },
 	{ key: "order", label: "Pedido" },
 	{ key: "quantity", label: "Qtd. atual" },
+	{ key: "tangerinas", label: "Tangerinas" },
 	{ key: "unitCost", label: "Custo unit." },
 	{ key: "salePrice", label: "Preço de venda" },
 	{ key: "tiktokPrice", label: "Preço TikTok" },
@@ -122,8 +125,17 @@ export function ProductsTable({
 	useEffect(() => {
 		try {
 			const stored = window.localStorage.getItem(COLUMN_STORAGE_KEY);
-			if (stored)
-				setVisibleColumns(normalizeVisibleColumns(JSON.parse(stored)));
+			if (stored) {
+				const parsed = normalizeVisibleColumns(JSON.parse(stored));
+				const migrated: ProductColumnKey[] = parsed.includes("tangerinas")
+					? parsed
+					: [...parsed, "tangerinas"];
+				setVisibleColumns(migrated);
+				window.localStorage.setItem(
+					COLUMN_STORAGE_KEY,
+					JSON.stringify(migrated),
+				);
+			}
 		} catch {
 			setVisibleColumns(DEFAULT_COLUMNS);
 		}
@@ -418,6 +430,9 @@ export function ProductsTable({
 									<TableHead className="text-end tracking-wide">
 										Qtd. Atual
 									</TableHead>
+									<TableHead className="text-center tracking-wide">
+										Tangerinas
+									</TableHead>
 									<TableHead className="text-end tracking-wide">
 										Custo Unit.
 									</TableHead>
@@ -447,6 +462,9 @@ export function ProductsTable({
 										</TableCell>
 										<TableCell className="text-end">
 											<Skeleton className="ml-auto h-4 w-6" />
+										</TableCell>
+										<TableCell className="text-center">
+											<Skeleton className="mx-auto h-5 w-10 rounded-full" />
 										</TableCell>
 										<TableCell className="text-end">
 											<Skeleton className="ml-auto h-4 w-16" />
@@ -497,6 +515,11 @@ export function ProductsTable({
 										<SortableHead column="quantity" align="end">
 											Qtd. Atual
 										</SortableHead>
+									) : null}
+									{isColumnVisible("tangerinas") ? (
+										<TableHead className="text-center tracking-wide">
+											Tangerinas
+										</TableHead>
 									) : null}
 									{isColumnVisible("unitCost") ? (
 										<SortableHead column="unitCost" align="end">
@@ -569,6 +592,22 @@ export function ProductsTable({
 											{isColumnVisible("quantity") ? (
 												<TableCell className="text-end font-mono text-sm tabular-nums font-semibold text-foreground">
 													{product.quantity}
+												</TableCell>
+											) : null}
+											{isColumnVisible("tangerinas") ? (
+												<TableCell className="text-center">
+													{product.tangerinas > 0 ? (
+														<Badge
+															variant="secondary"
+															className="min-w-8 justify-center font-mono tabular-nums"
+														>
+															{product.tangerinas}
+														</Badge>
+													) : (
+														<span className="font-mono text-sm tabular-nums text-muted-foreground">
+															—
+														</span>
+													)}
 												</TableCell>
 											) : null}
 											{isColumnVisible("unitCost") ? (

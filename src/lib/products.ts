@@ -136,6 +136,12 @@ const createProductSchema = z.object({
 	category: z.string().min(1, "Informe a categoria/linha"),
 	unitCost: z.coerce.number().min(0.01, "Informe o custo unitário"),
 	salePrice: z.coerce.number().min(0.01, "Informe o preço de venda"),
+	tangerinas: z.coerce
+		.number()
+		.int("Informe um número inteiro")
+		.min(0, "Não use números negativos")
+		.max(99, "Use no máximo 99 Tangerinas")
+		.default(0),
 	initialQuantity: z.coerce.number().int().min(0).default(0),
 	purchaseOrderId: z.string().uuid().optional().or(z.literal("")),
 	photoUrl: productImageSourceSchema.optional().or(z.literal("")),
@@ -209,6 +215,7 @@ export const listInventory = createServerFn({ method: "GET" })
 						category: products.category,
 						unitCost: products.unitCost,
 						salePrice: products.salePrice,
+						tangerinas: products.tangerinas,
 						quantity: products.quantity,
 						status: products.status,
 						photoThumbnailUrl: products.photoThumbnailUrl,
@@ -248,6 +255,7 @@ export const listInventory = createServerFn({ method: "GET" })
 					category: row.category,
 					unitCost: row.unitCost,
 					salePrice: row.salePrice,
+					tangerinas: row.tangerinas,
 					quantity: row.quantity,
 					status: row.status,
 					photoThumbnailUrl: row.photoThumbnailUrl,
@@ -289,6 +297,12 @@ const updateProductSchema = z.object({
 	category: z.string().min(1, "Informe a categoria/linha"),
 	unitCost: z.coerce.number().min(0.01, "Informe o custo unitário"),
 	salePrice: z.coerce.number().min(0.01, "Informe o preço de venda"),
+	tangerinas: z.coerce
+		.number()
+		.int("Informe um número inteiro")
+		.min(0, "Não use números negativos")
+		.max(99, "Use no máximo 99 Tangerinas")
+		.default(0),
 	purchaseOrderId: z.string().uuid().optional().or(z.literal("")),
 	photoUrl: productImageSourceSchema.optional().or(z.literal("")),
 	photoThumbnailUrl: productImageSourceSchema.optional().or(z.literal("")),
@@ -299,99 +313,109 @@ const updateProductSchema = z.object({
 
 export const updateProduct = createServerFn({ method: "POST" })
 	.inputValidator(updateProductSchema)
-	.handler(async ({ data }) => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-		if (!session) {
-			throw new Error("Unauthorized");
-		}
+	.handler(({ data }) =>
+		Sentry.startSpan({ name: "Atualizar produto" }, async () => {
+			const headers = getRequestHeaders();
+			const session = await auth.api.getSession({ headers });
+			if (!session) {
+				throw new Error("Unauthorized");
+			}
 
-		const [product] = await db
-			.update(products)
-			.set({
-				name: data.name,
-				brand: data.brand || null,
-				category: data.category,
-				unitCost: data.unitCost.toFixed(6),
-				salePrice: data.salePrice.toFixed(2),
-				purchaseOrderId: data.purchaseOrderId || null,
-				photoUrl: data.photoUrl || null,
-				photoThumbnailUrl: data.photoThumbnailUrl || null,
-				saleLink: data.saleLink || null,
-				status: data.status,
-				notes: data.notes || null,
-			})
-			.where(eq(products.id, data.id))
-			.returning();
+			const [product] = await db
+				.update(products)
+				.set({
+					name: data.name,
+					brand: data.brand || null,
+					category: data.category,
+					unitCost: data.unitCost.toFixed(6),
+					salePrice: data.salePrice.toFixed(2),
+					tangerinas: data.tangerinas,
+					purchaseOrderId: data.purchaseOrderId || null,
+					photoUrl: data.photoUrl || null,
+					photoThumbnailUrl: data.photoThumbnailUrl || null,
+					saleLink: data.saleLink || null,
+					status: data.status,
+					notes: data.notes || null,
+				})
+				.where(eq(products.id, data.id))
+				.returning();
 
-		if (!product) {
-			throw new Error("Produto não encontrado");
-		}
-		return product;
-	});
+			if (!product) {
+				throw new Error("Produto não encontrado");
+			}
+			return product;
+		}),
+	);
 
 export const createProduct = createServerFn({ method: "POST" })
 	.inputValidator(createProductSchema)
-	.handler(async ({ data }) => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-		if (!session) {
-			throw new Error("Unauthorized");
-		}
+	.handler(({ data }) =>
+		Sentry.startSpan({ name: "Cadastrar produto" }, async () => {
+			const headers = getRequestHeaders();
+			const session = await auth.api.getSession({ headers });
+			if (!session) {
+				throw new Error("Unauthorized");
+			}
 
-		let product: typeof products.$inferSelect | undefined;
-		let lastError: unknown;
+			let product: typeof products.$inferSelect | undefined;
+			let lastError: unknown;
 
-		for (let attempt = 0; attempt < 5 && !product; attempt++) {
-			const sku = await generateUniqueSku(data.category);
-			try {
-				[product] = await db
-					.insert(products)
-					.values({
-						sku,
-						name: data.name,
-						brand: data.brand || null,
-						category: data.category,
-						unitCost: data.unitCost.toFixed(6),
-						salePrice: data.salePrice.toFixed(2),
-						receivedQuantity: data.initialQuantity,
-						purchaseOrderId: data.purchaseOrderId || null,
-						photoUrl: data.photoUrl || null,
-						photoThumbnailUrl: data.photoThumbnailUrl || null,
-						saleLink: data.saleLink || null,
-						status: data.status,
-						notes: data.notes || null,
-						createdById: session.user.id,
-					})
-					.returning();
-			} catch (error) {
-				lastError = error;
-				if (
-					!(error instanceof Error && "code" in error && error.code === "23505")
-				) {
-					throw error;
+			for (let attempt = 0; attempt < 5 && !product; attempt++) {
+				const sku = await generateUniqueSku(data.category);
+				try {
+					[product] = await db
+						.insert(products)
+						.values({
+							sku,
+							name: data.name,
+							brand: data.brand || null,
+							category: data.category,
+							unitCost: data.unitCost.toFixed(6),
+							salePrice: data.salePrice.toFixed(2),
+							tangerinas: data.tangerinas,
+							receivedQuantity: data.initialQuantity,
+							purchaseOrderId: data.purchaseOrderId || null,
+							photoUrl: data.photoUrl || null,
+							photoThumbnailUrl: data.photoThumbnailUrl || null,
+							saleLink: data.saleLink || null,
+							status: data.status,
+							notes: data.notes || null,
+							createdById: session.user.id,
+						})
+						.returning();
+				} catch (error) {
+					lastError = error;
+					if (
+						!(
+							error instanceof Error &&
+							"code" in error &&
+							error.code === "23505"
+						)
+					) {
+						throw error;
+					}
 				}
 			}
-		}
 
-		if (!product) {
-			throw lastError instanceof Error
-				? lastError
-				: new Error("Não foi possível gerar um código único para o produto.");
-		}
+			if (!product) {
+				throw lastError instanceof Error
+					? lastError
+					: new Error("Não foi possível gerar um código único para o produto.");
+			}
 
-		if (data.initialQuantity > 0) {
-			await createStockMovement({
-				data: {
-					productId: product.id,
-					type: "entrada",
-					value: data.initialQuantity,
-					date: new Date().toISOString().slice(0, 10),
-					reason: "Estoque inicial",
-				},
-			});
-			product.quantity = data.initialQuantity;
-		}
+			if (data.initialQuantity > 0) {
+				await createStockMovement({
+					data: {
+						productId: product.id,
+						type: "entrada",
+						value: data.initialQuantity,
+						date: new Date().toISOString().slice(0, 10),
+						reason: "Estoque inicial",
+					},
+				});
+				product.quantity = data.initialQuantity;
+			}
 
-		return product;
-	});
+			return product;
+		}),
+	);

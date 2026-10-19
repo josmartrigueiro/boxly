@@ -128,6 +128,12 @@ export function ProductDetailsSheet() {
 									<div className="flex flex-wrap gap-2">
 										<Badge variant="outline">{product.category}</Badge>
 										<ProductStatusBadge quantity={product.quantity} />
+										{product.tangerinas > 0 ? (
+											<Badge variant="secondary">
+												{product.tangerinas}{" "}
+												{product.tangerinas === 1 ? "Tangerina" : "Tangerinas"}
+											</Badge>
+										) : null}
 										{product.status === "inactive" ? (
 											<Badge variant="destructive">Inativo</Badge>
 										) : null}
@@ -160,6 +166,10 @@ export function ProductDetailsSheet() {
 										label="Margem"
 										value={`${margin.toFixed(0)}%`}
 										highlight
+									/>
+									<InfoRow
+										label="Tangerinas para kits"
+										value={`${product.tangerinas} por unidade`}
 									/>
 								</CardContent>
 							</Card>
