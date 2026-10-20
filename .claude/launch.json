@@ -6,6 +6,12 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "gut-tasks-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd ../gut-tasks && bun run dev"],
+      "port": 3001
     }
   ]
 }
