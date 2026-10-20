@@ -9,30 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as DashboardIndexRouteImport } from './routes/_dashboard/index'
-import { Route as DashboardSuppliersRouteImport } from './routes/_dashboard/suppliers'
 import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
-import { Route as DashboardSalesIndexRouteImport } from './routes/_dashboard/sales/index'
-import { Route as DashboardPurchaseOrdersIndexRouteImport } from './routes/_dashboard/purchase-orders/index'
+import { Route as DashboardSuppliersRouteImport } from './routes/_dashboard/suppliers'
 import { Route as DashboardInventoryIndexRouteImport } from './routes/_dashboard/inventory/index'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as DashboardSalesNewRouteImport } from './routes/_dashboard/sales/new'
-import { Route as DashboardSalesSalesOrderIdRouteImport } from './routes/_dashboard/sales/$salesOrderId'
-import { Route as DashboardPurchaseOrdersNewRouteImport } from './routes/_dashboard/purchase-orders/new'
-import { Route as DashboardInventoryNewRouteImport } from './routes/_dashboard/inventory/new'
 import { Route as DashboardInventoryProductIdRouteImport } from './routes/_dashboard/inventory/$productId'
-import { Route as DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport } from './routes/_dashboard/purchase-orders/$purchaseOrderId.edit'
+import { Route as DashboardInventoryNewRouteImport } from './routes/_dashboard/inventory/new'
+import { Route as DashboardPurchaseOrdersIndexRouteImport } from './routes/_dashboard/purchase-orders/index'
+import { Route as DashboardPurchaseOrdersNewRouteImport } from './routes/_dashboard/purchase-orders/new'
+import { Route as DashboardSalesIndexRouteImport } from './routes/_dashboard/sales/index'
+import { Route as DashboardSalesSalesOrderIdRouteImport } from './routes/_dashboard/sales/$salesOrderId'
+import { Route as DashboardSalesNewRouteImport } from './routes/_dashboard/sales/new'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DashboardInventoryProductIdEditRouteImport } from './routes/_dashboard/inventory/$productId.edit'
+import { Route as DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport } from './routes/_dashboard/purchase-orders/$purchaseOrderId.edit'
 
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/_dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/_dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
@@ -40,57 +40,19 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardSuppliersRoute = DashboardSuppliersRouteImport.update({
-  id: '/suppliers',
-  path: '/suppliers',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardSalesIndexRoute = DashboardSalesIndexRouteImport.update({
-  id: '/sales/',
-  path: '/sales/',
+const DashboardSuppliersRoute = DashboardSuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardPurchaseOrdersIndexRoute =
-  DashboardPurchaseOrdersIndexRouteImport.update({
-    id: '/purchase-orders/',
-    path: '/purchase-orders/',
-    getParentRoute: () => DashboardRoute,
-  } as any)
 const DashboardInventoryIndexRoute = DashboardInventoryIndexRouteImport.update({
   id: '/inventory/',
   path: '/inventory/',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardSalesNewRoute = DashboardSalesNewRouteImport.update({
-  id: '/sales/new',
-  path: '/sales/new',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardSalesSalesOrderIdRoute =
-  DashboardSalesSalesOrderIdRouteImport.update({
-    id: '/sales/$salesOrderId',
-    path: '/sales/$salesOrderId',
-    getParentRoute: () => DashboardRoute,
-  } as any)
-const DashboardPurchaseOrdersNewRoute =
-  DashboardPurchaseOrdersNewRouteImport.update({
-    id: '/purchase-orders/new',
-    path: '/purchase-orders/new',
-    getParentRoute: () => DashboardRoute,
-  } as any)
-const DashboardInventoryNewRoute = DashboardInventoryNewRouteImport.update({
-  id: '/inventory/new',
-  path: '/inventory/new',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardInventoryProductIdRoute =
@@ -99,17 +61,55 @@ const DashboardInventoryProductIdRoute =
     path: '/inventory/$productId',
     getParentRoute: () => DashboardRoute,
   } as any)
-const DashboardPurchaseOrdersPurchaseOrderIdEditRoute =
-  DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport.update({
-    id: '/purchase-orders/$purchaseOrderId/edit',
-    path: '/purchase-orders/$purchaseOrderId/edit',
+const DashboardInventoryNewRoute = DashboardInventoryNewRouteImport.update({
+  id: '/inventory/new',
+  path: '/inventory/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPurchaseOrdersIndexRoute =
+  DashboardPurchaseOrdersIndexRouteImport.update({
+    id: '/purchase-orders/',
+    path: '/purchase-orders/',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardPurchaseOrdersNewRoute =
+  DashboardPurchaseOrdersNewRouteImport.update({
+    id: '/purchase-orders/new',
+    path: '/purchase-orders/new',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardSalesIndexRoute = DashboardSalesIndexRouteImport.update({
+  id: '/sales/',
+  path: '/sales/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSalesSalesOrderIdRoute =
+  DashboardSalesSalesOrderIdRouteImport.update({
+    id: '/sales/$salesOrderId',
+    path: '/sales/$salesOrderId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardSalesNewRoute = DashboardSalesNewRouteImport.update({
+  id: '/sales/new',
+  path: '/sales/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardInventoryProductIdEditRoute =
   DashboardInventoryProductIdEditRouteImport.update({
     id: '/edit',
     path: '/edit',
     getParentRoute: () => DashboardInventoryProductIdRoute,
+  } as any)
+const DashboardPurchaseOrdersPurchaseOrderIdEditRoute =
+  DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport.update({
+    id: '/purchase-orders/$purchaseOrderId/edit',
+    path: '/purchase-orders/$purchaseOrderId/edit',
+    getParentRoute: () => DashboardRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -228,18 +228,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sign-in': {
-      id: '/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof SignInRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_dashboard': {
       id: '/_dashboard'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_dashboard/': {
@@ -249,13 +249,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/suppliers': {
-      id: '/_dashboard/suppliers'
-      path: '/suppliers'
-      fullPath: '/suppliers'
-      preLoaderRoute: typeof DashboardSuppliersRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/_dashboard/settings': {
       id: '/_dashboard/settings'
       path: '/settings'
@@ -263,18 +256,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/sales/': {
-      id: '/_dashboard/sales/'
-      path: '/sales'
-      fullPath: '/sales/'
-      preLoaderRoute: typeof DashboardSalesIndexRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/purchase-orders/': {
-      id: '/_dashboard/purchase-orders/'
-      path: '/purchase-orders'
-      fullPath: '/purchase-orders/'
-      preLoaderRoute: typeof DashboardPurchaseOrdersIndexRouteImport
+    '/_dashboard/suppliers': {
+      id: '/_dashboard/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof DashboardSuppliersRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/inventory/': {
@@ -284,32 +270,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardInventoryIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_dashboard/sales/new': {
-      id: '/_dashboard/sales/new'
-      path: '/sales/new'
-      fullPath: '/sales/new'
-      preLoaderRoute: typeof DashboardSalesNewRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/sales/$salesOrderId': {
-      id: '/_dashboard/sales/$salesOrderId'
-      path: '/sales/$salesOrderId'
-      fullPath: '/sales/$salesOrderId'
-      preLoaderRoute: typeof DashboardSalesSalesOrderIdRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/purchase-orders/new': {
-      id: '/_dashboard/purchase-orders/new'
-      path: '/purchase-orders/new'
-      fullPath: '/purchase-orders/new'
-      preLoaderRoute: typeof DashboardPurchaseOrdersNewRouteImport
+    '/_dashboard/inventory/$productId': {
+      id: '/_dashboard/inventory/$productId'
+      path: '/inventory/$productId'
+      fullPath: '/inventory/$productId'
+      preLoaderRoute: typeof DashboardInventoryProductIdRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/inventory/new': {
@@ -319,19 +284,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardInventoryNewRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/inventory/$productId': {
-      id: '/_dashboard/inventory/$productId'
-      path: '/inventory/$productId'
-      fullPath: '/inventory/$productId'
-      preLoaderRoute: typeof DashboardInventoryProductIdRouteImport
+    '/_dashboard/purchase-orders/': {
+      id: '/_dashboard/purchase-orders/'
+      path: '/purchase-orders'
+      fullPath: '/purchase-orders/'
+      preLoaderRoute: typeof DashboardPurchaseOrdersIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/purchase-orders/$purchaseOrderId/edit': {
-      id: '/_dashboard/purchase-orders/$purchaseOrderId/edit'
-      path: '/purchase-orders/$purchaseOrderId/edit'
-      fullPath: '/purchase-orders/$purchaseOrderId/edit'
-      preLoaderRoute: typeof DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport
+    '/_dashboard/purchase-orders/new': {
+      id: '/_dashboard/purchase-orders/new'
+      path: '/purchase-orders/new'
+      fullPath: '/purchase-orders/new'
+      preLoaderRoute: typeof DashboardPurchaseOrdersNewRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/sales/': {
+      id: '/_dashboard/sales/'
+      path: '/sales'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof DashboardSalesIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/sales/$salesOrderId': {
+      id: '/_dashboard/sales/$salesOrderId'
+      path: '/sales/$salesOrderId'
+      fullPath: '/sales/$salesOrderId'
+      preLoaderRoute: typeof DashboardSalesSalesOrderIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/sales/new': {
+      id: '/_dashboard/sales/new'
+      path: '/sales/new'
+      fullPath: '/sales/new'
+      preLoaderRoute: typeof DashboardSalesNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_dashboard/inventory/$productId/edit': {
       id: '/_dashboard/inventory/$productId/edit'
@@ -339,6 +332,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/inventory/$productId/edit'
       preLoaderRoute: typeof DashboardInventoryProductIdEditRouteImport
       parentRoute: typeof DashboardInventoryProductIdRoute
+    }
+    '/_dashboard/purchase-orders/$purchaseOrderId/edit': {
+      id: '/_dashboard/purchase-orders/$purchaseOrderId/edit'
+      path: '/purchase-orders/$purchaseOrderId/edit'
+      fullPath: '/purchase-orders/$purchaseOrderId/edit'
+      preLoaderRoute: typeof DashboardPurchaseOrdersPurchaseOrderIdEditRouteImport
+      parentRoute: typeof DashboardRoute
     }
   }
 }
