@@ -34,6 +34,10 @@ async function main() {
 
   const result = await auth.api.signUpEmail({
     body: { email, password, name },
+    headers: new Headers({
+      host: 'localhost:3000',
+      origin: 'http://localhost:3000',
+    }),
   })
 
   await db
