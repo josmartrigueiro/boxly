@@ -68,6 +68,10 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 	currency: "BRL",
 });
 
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
+	timeZone: "UTC",
+});
+
 const SKELETON_ROW_WIDTHS = ["w-28", "w-20", "w-32", "w-24", "w-28"];
 const COLUMN_STORAGE_KEY = "boxly:inventory-visible-columns";
 const DEFAULT_COLUMNS: ProductColumnKey[] = [
@@ -115,7 +119,8 @@ export function ProductsTable({
 	isLoading,
 	isRefreshing,
 }: ProductsTableProps) {
-	const { q, category, page, pageSize, sort, dir } = routeApi.useSearch();
+	const { q, category, page, pageSize, sort, dir, purchaseOrder } =
+		routeApi.useSearch();
 	const navigate = routeApi.useNavigate();
 	const { commission } = useTiktokCommission();
 	const [visibleColumns, setVisibleColumns] =
@@ -170,7 +175,11 @@ export function ProductsTable({
 
 	const isDefaultSort = sort === "createdAt" && dir === "desc";
 	const hasActiveFilters =
-		q.trim() !== "" || category !== "all" || !isDefaultSort;
+		q.trim() !== "" ||
+		category !== "all" ||
+		!isDefaultSort ||
+		Boolean(purchaseOrder);
+	const purchaseOrderFilter = inventory?.purchaseOrderFilter ?? null;
 
 	const products = inventory?.items ?? [];
 	const total = inventory?.total ?? 0;
@@ -225,7 +234,15 @@ export function ProductsTable({
 				page: 1,
 				pageSize,
 				product: undefined,
+				purchaseOrder: undefined,
 			},
+			replace: true,
+		});
+	}
+
+	function handleClearPurchaseOrder() {
+		navigate({
+			search: (prev) => ({ ...prev, purchaseOrder: undefined, page: 1 }),
 			replace: true,
 		});
 	}
@@ -311,6 +328,22 @@ export function ProductsTable({
 							</span>
 						) : null}
 					</CardTitle>
+					{purchaseOrder ? (
+						<span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 py-0.5 pr-1 pl-2.5 text-xs font-medium text-primary">
+							Pedido
+							{purchaseOrderFilter
+								? `: ${purchaseOrderFilter.supplier.name} · ${dateFormatter.format(new Date(purchaseOrderFilter.orderDate))}`
+								: null}
+							<button
+								type="button"
+								aria-label="Remover filtro de pedido"
+								onClick={handleClearPurchaseOrder}
+								className="rounded-full p-0.5 hover:bg-primary/10"
+							>
+								<X className="size-3" />
+							</button>
+						</span>
+					) : null}
 				</div>
 				<CardAction className="flex items-center gap-2">
 					<div className="relative">

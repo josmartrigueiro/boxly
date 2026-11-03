@@ -4,6 +4,7 @@ import {
 	AlertTriangle,
 	ClipboardList,
 	MoreVertical,
+	Package,
 	Pencil,
 } from "lucide-react";
 
@@ -295,6 +296,17 @@ export function PurchaseOrdersTable() {
 														>
 															<Pencil />
 															Editar pedido
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															render={
+																<Link
+																	to="/inventory"
+																	search={{ purchaseOrder: order.id }}
+																/>
+															}
+														>
+															<Package />
+															Ver produtos do pedido
 														</DropdownMenuItem>
 													</DropdownMenuContent>
 												</DropdownMenu>

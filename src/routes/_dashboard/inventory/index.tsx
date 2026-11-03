@@ -27,6 +27,7 @@ const inventorySearchSchema = z.object({
 		.default("createdAt"),
 	dir: z.enum(["asc", "desc"]).catch("desc").default("desc"),
 	product: z.string().uuid().optional().catch(undefined),
+	purchaseOrder: z.string().uuid().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/_dashboard/inventory/")({
@@ -51,12 +52,14 @@ function EstoquePage() {
 			sort: search.sort,
 			dir: search.dir,
 			lowStockThreshold: threshold,
+			purchaseOrder: search.purchaseOrder,
 		}),
 		[
 			search.category,
 			search.dir,
 			search.page,
 			search.pageSize,
+			search.purchaseOrder,
 			search.q,
 			search.sort,
 			threshold,

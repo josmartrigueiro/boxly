@@ -1,11 +1,27 @@
 import * as Sentry from "@sentry/tanstackstart-react";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { and, asc, count, desc, eq, ilike, like, or, sql } from "drizzle-orm";
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	like,
+	or,
+	sql,
+} from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "#/db";
-import { products, purchaseOrders, suppliers } from "#/db/schema";
+import {
+	products,
+	purchaseOrders,
+	stockMovements,
+	suppliers,
+} from "#/db/schema";
 import { auth } from "#/lib/auth";
 import { createStockMovement } from "#/lib/stock-movements";
 
@@ -28,6 +44,7 @@ export const inventorySearchInputSchema = z.object({
 	sort: z.enum(inventorySortValues).catch("createdAt").default("createdAt"),
 	dir: z.enum(["asc", "desc"]).catch("desc").default("desc"),
 	lowStockThreshold: z.coerce.number().int().min(1).catch(5).default(5),
+	purchaseOrder: z.string().uuid().optional().catch(undefined),
 });
 
 export type InventorySearchInput = z.infer<typeof inventorySearchInputSchema>;
@@ -179,6 +196,22 @@ export const listInventory = createServerFn({ method: "GET" })
 				data.category !== "all"
 					? eq(products.category, data.category)
 					: undefined,
+				// Produtos do pedido: os criados por ele e os repostos por ele
+				// (reposição só gera movimentação, não troca o pedido do produto).
+				data.purchaseOrder
+					? or(
+							eq(products.purchaseOrderId, data.purchaseOrder),
+							inArray(
+								products.id,
+								db
+									.select({ id: stockMovements.productId })
+									.from(stockMovements)
+									.where(
+										eq(stockMovements.purchaseOrderId, data.purchaseOrder),
+									),
+							),
+						)
+					: undefined,
 			];
 			const where = and(...conditions);
 			const orderDirection = data.dir === "asc" ? asc : desc;
@@ -273,6 +306,13 @@ export const listInventory = createServerFn({ method: "GET" })
 					out: Number(totals[0]?.out ?? 0),
 					value: Number(totals[0]?.value ?? 0),
 				},
+				purchaseOrderFilter: data.purchaseOrder
+					? ((await db.query.purchaseOrders.findFirst({
+							where: eq(purchaseOrders.id, data.purchaseOrder),
+							columns: { id: true, orderDate: true },
+							with: { supplier: { columns: { name: true } } },
+						})) ?? null)
+					: null,
 			};
 		}),
 	);
