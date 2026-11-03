@@ -137,6 +137,16 @@ export function PurchaseOrderImportForm({
 				supplierId = supplier?.id ?? null;
 			}
 
+			// Sem CNPJ (ou CNPJ não cadastrado): tenta achar pelo nome exato.
+			if (!supplierId) {
+				const supplierName = normalizeWords(result.supplier.name).join(" ");
+				const suppliers = await listSuppliers();
+				const supplier = suppliers.find(
+					(item) => normalizeWords(item.name).join(" ") === supplierName,
+				);
+				supplierId = supplier?.id ?? null;
+			}
+
 			setRawXml(xml);
 			setMatchedSupplierId(supplierId);
 			setParsed(result);
@@ -534,8 +544,8 @@ function NfeReviewForm({
 							htmlFor={field.name}
 							description={
 								matchedSupplierId
-									? "Identificado pelo CNPJ da nota. Pode trocar se não for o certo."
-									: "Não encontramos um fornecedor com esse CNPJ — cadastre um novo abaixo."
+									? "Identificado automaticamente pela nota. Pode trocar se não for o certo."
+									: "Não encontramos esse fornecedor — selecione um existente ou cadastre um novo."
 							}
 							required
 						>
@@ -550,7 +560,17 @@ function NfeReviewForm({
 										Novo fornecedor
 									</button>
 								</div>
-							) : null}
+							) : (
+								<div className="flex items-center justify-end">
+									<button
+										type="button"
+										onClick={() => setShowNewSupplier(false)}
+										className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+									>
+										Selecionar fornecedor existente
+									</button>
+								</div>
+							)}
 							{isLoadingSuppliers ? (
 								<Skeleton className="h-8 w-full" />
 							) : !showNewSupplier ? (
