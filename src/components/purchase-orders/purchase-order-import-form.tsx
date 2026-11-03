@@ -54,17 +54,33 @@ import {
 import { createStockMovement } from "@/lib/stock-movements";
 import { listSuppliers, suppliersQueryKey } from "@/lib/suppliers";
 
+const MATCH_IGNORED_WORDS = new Set(["DE", "DA", "DO", "COM", "PARA", "E"]);
+// Fração mínima de palavras em comum (sobre a união) para tratar o item
+// como reposição. Nomes de papelaria repetem muito "Caderneta", "A5" etc.,
+// então só casa quando os nomes são praticamente iguais.
+const MATCH_MIN_SIMILARITY = 0.8;
+
+function matchWords(value: string): Set<string> {
+	return new Set(
+		normalizeWords(value)
+			.map((word) => word.replace(/[^A-Z0-9]/g, ""))
+			.filter((word) => word && !MATCH_IGNORED_WORDS.has(word)),
+	);
+}
+
 function findMatchingProduct<T extends { id: string; name: string }>(
 	itemName: string,
 	products: T[],
 ): T | null {
-	const itemWords = new Set(normalizeWords(itemName));
+	const itemWords = matchWords(itemName);
 	let best: { product: T; score: number } | null = null;
 
 	for (const product of products) {
-		const productWords = normalizeWords(product.name);
-		const score = productWords.filter((word) => itemWords.has(word)).length;
-		if (score >= 2 && (!best || score > best.score)) {
+		const productWords = matchWords(product.name);
+		const shared = [...productWords].filter((word) => itemWords.has(word));
+		const union = new Set([...productWords, ...itemWords]).size;
+		const score = union > 0 ? shared.length / union : 0;
+		if (score >= MATCH_MIN_SIMILARITY && (!best || score > best.score)) {
 			best = { product, score };
 		}
 	}
